@@ -10,3 +10,8 @@ body {
     border: 0;
     text-decoration: none;
 }
+
+.product-details dt,
+.product-details dd {
+    padding-block: 0.55rem;
+}

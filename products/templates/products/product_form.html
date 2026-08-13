@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Edit product{% else %}Create product{% endif %} | SME Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="mb-4">
+            <a class="small text-decoration-none" href="{% if object %}{% url 'products:detail' object.pk %}{% else %}{% url 'products:list' %}{% endif %}">&larr; Cancel</a>
+            <h1 class="h2 mt-2 mb-0">{% if object %}Edit product{% else %}Create product{% endif %}</h1>
+        </div>
+
+        <section class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% for error in form.non_field_errors %}
+                        <div class="alert alert-danger" role="alert">{{ error }}</div>
+                    {% endfor %}
+                    <div class="row g-3">
+                        {% for field in form %}
+                            <div class="col-12 {% if field.name == 'sku' or field.name == 'name' %}col-md-6{% else %}col-md-6{% endif %}">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a class="btn btn-outline-secondary" href="{% if object %}{% url 'products:detail' object.pk %}{% else %}{% url 'products:list' %}{% endif %}">Cancel</a>
+                        <button class="btn btn-primary" type="submit">Save product</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
