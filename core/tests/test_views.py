@@ -1,8 +1,22 @@
-from django.test import SimpleTestCase
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.test import TestCase
 from django.urls import reverse
 
 
-class HomePageTests(SimpleTestCase):
+class HomePageTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        staff_group, _ = Group.objects.get_or_create(name="Staff")
+        cls.staff_user = get_user_model().objects.create_user(
+            username="staff-user",
+            password="test-password-123",
+        )
+        cls.staff_user.groups.add(staff_group)
+
+    def setUp(self):
+        self.client.force_login(self.staff_user)
+
     def test_home_page_renders_dashboard_template(self):
         response = self.client.get(reverse("core:home"))
 

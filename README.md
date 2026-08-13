@@ -62,6 +62,27 @@ python manage.py runserver
 
 Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) to view the dashboard placeholder.
 
+## Authentication and roles
+
+- **Admin** users are Django superusers. They can access the dashboard, Django admin, and built-in user management.
+- **Staff** users belong to the Django group named `Staff`. Keep their Django `is_staff` setting disabled so they cannot access Django admin.
+
+Create the initial administrator with:
+
+```powershell
+python manage.py createsuperuser
+```
+
+Administrators can create normal users at `/admin/auth/user/` and assign them to the `Staff` group. There is no public registration page.
+
+PostgreSQL-backed tests create a temporary database. The local development database role therefore needs `CREATEDB` while running tests:
+
+```sql
+ALTER ROLE sme_manager_user CREATEDB;
+```
+
+A production application role should not normally receive this permission.
+
 ## Verification
 
 ```powershell
