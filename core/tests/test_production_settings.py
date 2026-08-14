@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 class ProductionSettingsTests(SimpleTestCase):
     def run_settings_probe(self, **overrides):
         environment = os.environ.copy()
+        environment.pop("DJANGO_SECURE_SSL_REDIRECT", None)
         environment.update(
             {
                 "DJANGO_SETTINGS_MODULE": "sme_manager.settings",
@@ -123,6 +124,12 @@ print(json.dumps({
             json.loads(result.stdout)["proxy_header"],
             ["HTTP_X_FORWARDED_PROTO", "https"],
         )
+
+    def test_production_ssl_redirect_can_be_explicitly_disabled(self):
+        result = self.run_settings_probe(DJANGO_SECURE_SSL_REDIRECT="False")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIs(json.loads(result.stdout)["ssl_redirect"], False)
 
     def test_hsts_seconds_are_environment_controlled(self):
         result = self.run_settings_probe(DJANGO_SECURE_HSTS_SECONDS="3600")
