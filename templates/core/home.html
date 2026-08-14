@@ -1,14 +1,83 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Dashboard | SME Manager{% endblock %}
 
 {% block content %}
-<section class="bg-white border rounded-3 p-4 shadow-sm">
-    <p class="text-uppercase text-secondary small fw-semibold mb-2">Business overview</p>
-    <h1 class="h2 mb-3">Dashboard</h1>
-    <p class="text-secondary mb-0">
-        Your SME business overview will appear here as each management module is added.
-    </p>
+<header class="report-hero mb-4">
+    <div>
+        <p class="report-eyebrow mb-2">Operational overview</p>
+        <h1 class="display-6 fw-semibold mb-2">Dashboard</h1>
+        <p class="text-secondary mb-0">Today’s business position, with activity measured across your selected period.</p>
+    </div>
+    {% include "reports/_period_selector.html" %}
+</header>
+
+<div class="report-context mb-4" role="note">
+    <strong>{{ period.label }}</strong>
+    <span>{{ period.start_date|date:"j M Y" }} – {{ period.end_date|date:"j M Y" }}</span>
+    <a href="{% url 'reports:index' %}?period={{ period.key }}">Open full reports</a>
+</div>
+
+<section aria-labelledby="period-kpis-heading" class="mb-4">
+    <div class="d-flex align-items-end justify-content-between mb-3">
+        <div><p class="report-eyebrow mb-1">Selected period</p><h2 class="h4 mb-0" id="period-kpis-heading">Sales signal</h2></div>
+    </div>
+    <div class="row g-3">
+        <div class="col-md-4"><div class="kpi-card"><span>Sales revenue</span><strong>MYR {{ dashboard.revenue|floatformat:2 }}</strong><small>{{ period.label }}</small></div></div>
+        <div class="col-md-4"><div class="kpi-card"><span>Sales count</span><strong>{{ dashboard.sale_count }}</strong><small>Completed Sales</small></div></div>
+        <div class="col-md-4"><div class="kpi-card"><span>Average Sale value</span><strong>MYR {{ dashboard.average_sale|floatformat:2 }}</strong><small>Revenue per Sale</small></div></div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4" aria-labelledby="current-kpis-heading">
+    <div class="col-12"><p class="report-eyebrow mb-1">Current state</p><h2 class="h4 mb-0" id="current-kpis-heading">Business position</h2></div>
+    <div class="col-lg-4"><div class="kpi-card kpi-card-current"><span>Active customers</span><strong>{{ dashboard.active_customers }}</strong><small>Current Customer directory</small></div></div>
+    <div class="col-lg-4">
+        <div class="kpi-card kpi-card-current">
+            <span>Inventory health</span>
+            <div class="inventory-mini"><strong>{{ dashboard.inventory.active_products }}<small>Active</small></strong><strong>{{ dashboard.inventory.low_stock }}<small>Low</small></strong><strong>{{ dashboard.inventory.out_of_stock }}<small>Out</small></strong></div>
+        </div>
+    </div>
+    <div class="col-lg-4"><div class="kpi-card kpi-card-current"><span>Invoice issuance rate</span><strong>{% if dashboard.invoice_rate is not None %}{{ dashboard.invoice_rate|floatformat:2 }}%{% else %}—{% endif %}</strong><small>Selected-period Sales with an Invoice</small></div></div>
+</section>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <section class="chart-panel h-100" aria-labelledby="revenue-chart-heading">
+            <p class="report-eyebrow mb-1">Selected period</p>
+            <h2 class="h4 mb-1" id="revenue-chart-heading">Daily Sales revenue</h2>
+            <p class="small text-secondary">MYR, zero-filled for every local calendar day.</p>
+            <div class="chart-frame"><canvas id="dashboard-revenue-chart" data-report-chart="revenue" aria-label="Daily Sales revenue"></canvas></div>
+            {{ dashboard.revenue_chart|json_script:"dashboard-revenue-data" }}
+        </section>
+    </div>
+    <div class="col-lg-5">
+        <section class="table-panel h-100" aria-labelledby="stock-attention-heading">
+            <p class="report-eyebrow mb-1">Current state</p>
+            <h2 class="h4 mb-3" id="stock-attention-heading">Stock attention</h2>
+            {% if dashboard.attention_products %}
+                <div class="stock-attention-list">
+                {% for product in dashboard.attention_products %}
+                    <a href="{% url 'products:detail' product.pk %}"><span><strong>{{ product.sku }}</strong><small>{{ product.name }}</small></span><span class="stock-count{% if product.current_stock == 0 %} stock-count-out{% endif %}">{{ product.current_stock }}</span></a>
+                {% endfor %}
+                </div>
+            {% else %}<p class="empty-state">No products need stock attention.</p>{% endif %}
+        </section>
+    </div>
+</div>
+
+<section class="table-panel" aria-labelledby="recent-sales-heading">
+    <div class="report-section-header"><div><p class="report-eyebrow mb-1">Selected period</p><h2 class="h4 mb-0" id="recent-sales-heading">Recent Sales</h2></div><a href="{% url 'sales:list' %}" class="btn btn-outline-dark btn-sm">View all Sales</a></div>
+    {% if dashboard.recent_sales %}
+        <div class="table-responsive mt-3"><table class="table align-middle mb-0"><thead><tr><th>Sale</th><th>When</th><th>Customer</th><th>Invoice</th><th class="text-end">Total</th></tr></thead><tbody>
+        {% for sale in dashboard.recent_sales %}<tr><td><a href="{% url 'sales:detail' sale.pk %}" class="fw-semibold">{{ sale.sale_number }}</a></td><td>{{ sale.created_at|date:"j M Y, H:i" }}</td><td>{{ sale.customer_name|default:"Walk-in Customer" }}</td><td>{% if sale.invoice %}<a href="{% url 'invoices:detail' sale.invoice.pk %}">{{ sale.invoice.invoice_number }}</a>{% else %}—{% endif %}</td><td class="text-end">MYR {{ sale.total_amount|floatformat:2 }}</td></tr>{% endfor %}
+        </tbody></table></div>
+    {% else %}<p class="empty-state mt-3">No sales in this period.</p>{% endif %}
 </section>
 {% endblock %}
 
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/reports.js' %}"></script>
+{% endblock %}

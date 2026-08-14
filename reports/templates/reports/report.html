@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Reports | SME Manager{% endblock %}
+
+{% block content %}
+<header class="report-hero mb-4">
+    <div>
+        <p class="report-eyebrow mb-2">Decision support</p>
+        <h1 class="display-6 fw-semibold mb-2">Business reports</h1>
+        <p class="text-secondary mb-0">A single operational view of Sales, stock, Customers, and Invoice coverage.</p>
+    </div>
+    {% include "reports/_period_selector.html" %}
+</header>
+
+<div class="report-context mb-4" role="note">
+    <strong>{{ period.label }}</strong>
+    <span>{{ period.start_date|date:"j M Y" }} – {{ period.end_date|date:"j M Y" }}</span>
+    <span>Period figures use local Kuala Lumpur calendar days.</span>
+</div>
+
+<section class="report-section mb-4" aria-labelledby="sales-report-heading">
+    <div class="report-section-header">
+        <div>
+            <p class="report-eyebrow mb-1">Selected period</p>
+            <h2 class="h3 mb-0" id="sales-report-heading">Sales performance</h2>
+        </div>
+        <a class="btn btn-outline-dark btn-sm" href="{% url 'reports:sales_csv' %}?period={{ period.key }}">Export Sales CSV</a>
+    </div>
+    <div class="row g-3 mt-1">
+        <div class="col-6 col-lg-3"><div class="metric-tile"><span>Revenue</span><strong>MYR {{ sales_report.revenue|floatformat:2 }}</strong></div></div>
+        <div class="col-6 col-lg-3"><div class="metric-tile"><span>Sales</span><strong>{{ sales_report.sale_count }}</strong></div></div>
+        <div class="col-6 col-lg-3"><div class="metric-tile"><span>Average Sale</span><strong>MYR {{ sales_report.average_sale|floatformat:2 }}</strong></div></div>
+        <div class="col-6 col-lg-3"><div class="metric-tile"><span>Walk-in Sales</span><strong>{{ sales_report.walk_in_count }}</strong></div></div>
+    </div>
+    <div class="row g-4 mt-1">
+        <div class="col-lg-7">
+            <div class="chart-panel h-100">
+                <h3 class="h6 mb-1">Top 5 Products by Sales revenue</h3>
+                <p class="small text-secondary">Grouped by stable Product identity; revenue uses historical SaleItem subtotals.</p>
+                {% if sales_report.top_products_by_revenue %}
+                    <div class="chart-frame"><canvas id="top-products-chart" data-report-chart="top-products" aria-label="Top products by Sales revenue"></canvas></div>
+                    {{ top_products_chart|json_script:"reports-top-products-data" }}
+                {% else %}
+                    <p class="empty-state">No top Products in this period.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="table-panel h-100">
+                <h3 class="h6 mb-3">Top Products by quantity</h3>
+                {% if sales_report.top_products_by_quantity %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Current Product</th><th class="text-end">Units</th><th class="text-end">Revenue</th></tr></thead>
+                            <tbody>
+                            {% for row in sales_report.top_products_by_quantity %}
+                                <tr><td><span class="fw-semibold">{{ row.product__sku }}</span><br><span class="small text-secondary">{{ row.product__name }}</span></td><td class="text-end">{{ row.quantity }}</td><td class="text-end">MYR {{ row.revenue|floatformat:2 }}</td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}<p class="empty-state">No Product Sales in this period.</p>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="table-panel mt-4">
+        <h3 class="h6 mb-3">Recent Sales</h3>
+        {% if sales_report.recent_sales %}
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Sale</th><th>When</th><th>Customer</th><th class="text-end">Total</th></tr></thead><tbody>
+            {% for sale in sales_report.recent_sales %}<tr><td><a href="{% url 'sales:detail' sale.pk %}" class="fw-semibold">{{ sale.sale_number }}</a></td><td>{{ sale.created_at|date:"j M, H:i" }}</td><td>{{ sale.customer_name|default:"Walk-in Customer" }}</td><td class="text-end">MYR {{ sale.total_amount|floatformat:2 }}</td></tr>{% endfor %}
+            </tbody></table></div>
+        {% else %}<p class="empty-state">No Sales in this period.</p>{% endif %}
+    </div>
+</section>
+
+<section class="report-section mb-4" aria-labelledby="inventory-report-heading">
+    <div class="report-section-header">
+        <div><p class="report-eyebrow mb-1">Current state + selected period</p><h2 class="h3 mb-0" id="inventory-report-heading">Inventory movement</h2></div>
+        <a class="btn btn-outline-dark btn-sm" href="{% url 'reports:inventory_movements_csv' %}?period={{ period.key }}">Export movements CSV</a>
+    </div>
+    <div class="inventory-pulse mt-3">
+        <div><span>Active Products</span><strong>{{ inventory_report.active_products }}</strong></div>
+        <div><span>Low Stock</span><strong>{{ inventory_report.low_stock }}</strong></div>
+        <div><span>Out of Stock</span><strong>{{ inventory_report.out_of_stock }}</strong></div>
+        <div><span>Stock In units</span><strong>{{ inventory_report.stock_in_units }}</strong></div>
+        <div><span>Stock Out units</span><strong>{{ inventory_report.stock_out_units }}</strong></div>
+    </div>
+    <div class="row g-3 mt-1">
+        <div class="col-md-4"><div class="metric-tile"><span>Adjustment count</span><strong>{{ inventory_report.adjustment_count }}</strong></div></div>
+        <div class="col-md-4"><div class="metric-tile"><span>Adjustment activity</span><strong>{{ inventory_report.adjustment_activity }} units</strong></div></div>
+        <div class="col-md-4"><div class="metric-tile"><span>Net adjustment</span><strong>{{ inventory_report.net_adjustment|stringformat:"+d" }} units</strong></div></div>
+    </div>
+    <div class="table-panel mt-4">
+        <h3 class="h6 mb-3">Recent movements</h3>
+        {% if inventory_report.recent_movements %}
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>When</th><th>Product</th><th>Type</th><th class="text-end">Quantity</th><th>Reason</th></tr></thead><tbody>
+            {% for movement in inventory_report.recent_movements %}<tr><td>{{ movement.created_at|date:"j M, H:i" }}</td><td>{{ movement.product.sku }} · {{ movement.product.name }}</td><td>{{ movement.get_movement_type_display }}</td><td class="text-end">{{ movement.quantity }}</td><td>{{ movement.reason|default:"—" }}</td></tr>{% endfor %}
+            </tbody></table></div>
+        {% else %}<p class="empty-state">No inventory movements in this period.</p>{% endif %}
+    </div>
+</section>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <section class="report-section h-100" aria-labelledby="customer-report-heading">
+            <p class="report-eyebrow mb-1">Current state + selected period</p>
+            <h2 class="h3" id="customer-report-heading">Customer activity</h2>
+            <dl class="report-definition-list mb-0">
+                <div><dt>Current active Customers</dt><dd>{{ customer_metrics.active_count }}</dd></div>
+                <div><dt>Active Customers created</dt><dd>{{ customer_metrics.created_in_period }}</dd></div>
+                <div><dt>Active Customers with Sales</dt><dd>{{ customer_metrics.with_sales_in_period }}</dd></div>
+                <div><dt>Walk-in Sales</dt><dd>{{ customer_metrics.walk_in_sales }}</dd></div>
+            </dl>
+        </section>
+    </div>
+    <div class="col-lg-6">
+        <section class="report-section h-100" aria-labelledby="invoice-report-heading">
+            <p class="report-eyebrow mb-1">Documents + Sale coverage</p>
+            <h2 class="h3" id="invoice-report-heading">Invoice coverage</h2>
+            <dl class="report-definition-list mb-0">
+                <div><dt>Invoices issued in period</dt><dd>{{ invoice_metrics.issued_count }}</dd></div>
+                <div><dt>Selected-period Sales invoiced</dt><dd>{{ invoice_metrics.invoiced_sales }} / {{ invoice_metrics.eligible_sales }}</dd></div>
+                <div><dt>Issuance rate</dt><dd>{% if invoice_metrics.issuance_rate is not None %}{{ invoice_metrics.issuance_rate|floatformat:2 }}%{% else %}—{% endif %}</dd></div>
+            </dl>
+            <p class="small text-secondary mt-3 mb-0">Invoices document Sales; they are never added to business revenue.</p>
+            <h3 class="h6 mt-4 mb-3">Recent Invoices issued</h3>
+            {% if invoice_metrics.recent_invoices %}
+                <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Invoice</th><th>Sale</th><th class="text-end">Total</th></tr></thead><tbody>
+                {% for invoice in invoice_metrics.recent_invoices %}<tr><td><a href="{% url 'invoices:detail' invoice.pk %}" class="fw-semibold">{{ invoice.invoice_number }}</a></td><td>{{ invoice.sale.sale_number }}</td><td class="text-end">MYR {{ invoice.total_amount|floatformat:2 }}</td></tr>{% endfor %}
+                </tbody></table></div>
+            {% else %}<p class="empty-state">No Invoices issued in this period.</p>{% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/reports.js' %}"></script>
+{% endblock %}

@@ -64,7 +64,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) to view the dashboard placeholder.
+Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) to view the business dashboard.
 
 ## Authentication and roles
 
@@ -120,6 +120,14 @@ Historical Sales keep Customer name/address and Product SKU/name/price snapshots
 Admin and Staff users can manually issue one immutable Invoice from a completed Sale. Issuance copies the historical Sale customer, item, price, and total snapshots together with the configured seller identity in one PostgreSQL transaction. It does not change the Sale, Product stock, or StockMovement history.
 
 Invoices support number, Sale number, customer, and issue-date lookup with 20 records per page. The Invoice detail is print-friendly: use **Print invoice** and the browser's **Save as PDF** option when a PDF copy is needed. Invoice and InvoiceItem records are read-only in Django admin and have no edit or delete workflow.
+
+## Dashboard and reports
+
+The authenticated Dashboard and unified Reports page provide read-only business metrics for Today, the last 7 days, or the last 30 days. Sales revenue always comes from immutable Sale totals; Invoice totals are documents and are never counted as additional revenue.
+
+Reports cover Sales performance, current inventory health, period inventory movement, Customer activity, and Invoice issuance coverage. Daily Sales revenue and the top five Products by historical Sales revenue use Chart.js, while all underlying figures remain available in HTML when charts are unavailable.
+
+Sales and Inventory Movement CSV exports use the same local-calendar period and authorization rules as the reports. Staff exports exclude movements for inactive Products, and user-controlled text is protected against spreadsheet formula injection.
 
 ## Verification
 
