@@ -1,6 +1,6 @@
 # SME Business Management & Inventory System
 
-A portfolio-ready Django foundation for a small-business management system. Phase 1 provides PostgreSQL configuration, a reusable Bootstrap layout, and a dashboard placeholder. Business modules will be added in later phases.
+A portfolio-ready Django and PostgreSQL system for managing SME products, inventory, customers, sales, and immutable invoices through a server-rendered Bootstrap interface.
 
 ## Requirements
 
@@ -51,6 +51,10 @@ Available settings:
 | `DB_PASSWORD` | Required PostgreSQL password |
 | `DB_HOST` | PostgreSQL host; defaults to `localhost` |
 | `DB_PORT` | PostgreSQL port; defaults to `5432` |
+| `INVOICE_SELLER_NAME` | Required seller name copied onto each issued Invoice |
+| `INVOICE_SELLER_ADDRESS` | Required seller address copied onto each issued Invoice |
+
+Invoice issuance is rejected when either seller value is empty. These values are snapshotted when an Invoice is issued, so later configuration changes do not alter historical documents.
 
 ### 4. Prepare and run Django
 
@@ -110,6 +114,12 @@ Admin and Staff users can create immutable completed Sales for an active Custome
 Sale creation is one PostgreSQL transaction: requested Products are locked in a consistent order, the existing Inventory service deducts stock, and every SaleItem links to its exact StockMovement. If any line is invalid or has insufficient stock, the Sale, all items, all movements, and every stock change are rolled back.
 
 Historical Sales keep Customer name/address and Product SKU/name/price snapshots. Completed Sales are read-only and cannot be edited, cancelled, or deleted through the Sales UI or Django admin.
+
+## Invoice management
+
+Admin and Staff users can manually issue one immutable Invoice from a completed Sale. Issuance copies the historical Sale customer, item, price, and total snapshots together with the configured seller identity in one PostgreSQL transaction. It does not change the Sale, Product stock, or StockMovement history.
+
+Invoices support number, Sale number, customer, and issue-date lookup with 20 records per page. The Invoice detail is print-friendly: use **Print invoice** and the browser's **Save as PDF** option when a PDF copy is needed. Invoice and InvoiceItem records are read-only in Django admin and have no edit or delete workflow.
 
 ## Verification
 

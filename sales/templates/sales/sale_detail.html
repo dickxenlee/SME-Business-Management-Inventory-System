@@ -9,7 +9,17 @@
         <h1 class="h2 mt-2 mb-1">{{ sale.sale_number }}</h1>
         <p class="text-secondary mb-0">Completed {{ sale.created_at|date:"j M Y, g:i a" }}</p>
     </div>
-    <a class="btn btn-primary" href="{% url 'sales:create' %}">Create another sale</a>
+    <div class="d-flex flex-wrap gap-2">
+        {% if sale.invoice %}
+            <a class="btn btn-primary" href="{% url 'invoices:detail' sale.invoice.pk %}">View invoice</a>
+        {% else %}
+            <form method="post" action="{% url 'invoices:issue' sale.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-primary" type="submit">Issue invoice</button>
+            </form>
+        {% endif %}
+        <a class="btn btn-outline-primary" href="{% url 'sales:create' %}">Create another sale</a>
+    </div>
 </div>
 
 {% if messages %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Invoices | SME Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-secondary small fw-semibold mb-1">Issued documents</p>
+        <h1 class="h2 mb-0">Invoices</h1>
+    </div>
+</div>
+
+{% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<form class="card card-body border-0 shadow-sm mb-4" method="get">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-lg">
+            <label class="form-label" for="invoice-search">Invoice number, sale number or customer</label>
+            <input class="form-control" id="invoice-search" name="q" value="{{ query }}" placeholder="e.g. INV-000001, SALE-000001 or Kedai Maju">
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+            <label class="form-label" for="invoice-date">Issue date</label>
+            <input class="form-control" id="invoice-date" name="date" type="date" value="{{ selected_date }}">
+        </div>
+        <div class="col-12 col-lg-auto d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Filter</button>
+            {% if query or selected_date %}
+                <a class="btn btn-outline-secondary" href="{% url 'invoices:list' %}">Clear</a>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+<div class="card border-0 shadow-sm overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">Invoice number</th>
+                    <th scope="col">Issued</th>
+                    <th scope="col">Sale number</th>
+                    <th scope="col">Customer</th>
+                    <th scope="col">Issued by</th>
+                    <th scope="col" class="text-end">Total</th>
+                    <th scope="col" class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in invoices %}
+                    <tr>
+                        <td class="fw-semibold">{{ invoice.invoice_number }}</td>
+                        <td>{{ invoice.issued_at|date:"j M Y, g:i a" }}</td>
+                        <td>{{ invoice.sale.sale_number }}</td>
+                        <td>{{ invoice.customer_name|default:"Walk-in Customer" }}</td>
+                        <td>{{ invoice.issued_by.username|default:"Former user" }}</td>
+                        <td class="text-end">RM {{ invoice.total_amount|floatformat:2 }}</td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'invoices:detail' invoice.pk %}">View</a></td>
+                    </tr>
+                {% empty %}
+                    <tr><td class="text-center text-secondary py-5" colspan="7">No invoices found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if is_paginated %}
+    <nav class="mt-4" aria-label="Invoice pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}{% if selected_date %}&amp;date={{ selected_date|urlencode }}{% endif %}">Previous</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}{% if selected_date %}&amp;date={{ selected_date|urlencode }}{% endif %}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+{% endblock %}

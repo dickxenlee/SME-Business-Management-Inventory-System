@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}{{ invoice.invoice_number }} | SME Manager{% endblock %}
+
+{% block content %}
+<div class="screen-only d-flex flex-column flex-sm-row justify-content-between gap-3 mb-4">
+    <a class="align-self-start small text-decoration-none" href="{% url 'invoices:list' %}">&larr; Back to invoices</a>
+    <button class="btn btn-primary align-self-start" type="button" onclick="window.print()">Print invoice</button>
+</div>
+
+{% if messages %}
+    <div class="messages screen-only">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<article class="invoice-document bg-white shadow-sm" aria-labelledby="invoice-heading">
+    <header class="invoice-header">
+        <div class="invoice-seller">
+            <p class="invoice-kicker">Issued by</p>
+            <p class="h4 mb-2">{{ invoice.seller_name }}</p>
+            <p class="mb-0 text-secondary">{{ invoice.seller_address|linebreaksbr }}</p>
+        </div>
+        <div class="invoice-identity">
+            <p class="invoice-kicker">Invoice</p>
+            <h1 class="invoice-number" id="invoice-heading">{{ invoice.invoice_number }}</h1>
+            <dl class="invoice-meta mb-0">
+                <div><dt>Issued</dt><dd>{{ invoice.issued_at|date:"j M Y, g:i a" }}</dd></div>
+                <div><dt>Sale</dt><dd><a class="screen-only-link" href="{% url 'sales:detail' invoice.sale.pk %}">{{ invoice.sale.sale_number }}</a><span class="print-only">{{ invoice.sale.sale_number }}</span></dd></div>
+            </dl>
+        </div>
+    </header>
+
+    <section class="invoice-customer" aria-labelledby="bill-to-heading">
+        <p class="invoice-kicker" id="bill-to-heading">Bill to</p>
+        <h2 class="h5 mb-2">{{ invoice.customer_name|default:"Walk-in Customer" }}</h2>
+        {% if invoice.customer_address %}
+            <p class="mb-0 text-secondary">{{ invoice.customer_address|linebreaksbr }}</p>
+        {% else %}
+            <p class="mb-0 text-secondary">No customer address provided.</p>
+        {% endif %}
+    </section>
+
+    <div class="table-responsive invoice-items">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">SKU</th>
+                    <th scope="col">Description</th>
+                    <th scope="col" class="text-end">Quantity</th>
+                    <th scope="col" class="text-end">Unit price</th>
+                    <th scope="col" class="text-end">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in invoice.items.all %}
+                    <tr>
+                        <td class="fw-semibold">{{ item.product_sku }}</td>
+                        <td>{{ item.product_name }}</td>
+                        <td class="text-end">{{ item.quantity }}</td>
+                        <td class="text-end">RM {{ item.unit_price|floatformat:2 }}</td>
+                        <td class="text-end">RM {{ item.subtotal|floatformat:2 }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th class="text-end" colspan="4" scope="row">Total</th>
+                    <th class="text-end invoice-total">RM {{ invoice.total_amount|floatformat:2 }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <footer class="invoice-footer">
+        <span>Issued by {{ invoice.issued_by.username|default:"Former user" }}</span>
+        <span>Generated from {{ invoice.sale.sale_number }}</span>
+    </footer>
+</article>
+{% endblock %}

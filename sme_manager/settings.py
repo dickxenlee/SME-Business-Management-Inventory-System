@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "inventory.apps.InventoryConfig",
     "customers.apps.CustomersConfig",
     "sales.apps.SalesConfig",
+    "invoices.apps.InvoicesConfig",
 ]
 
 MIDDLEWARE = [
@@ -101,3 +102,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "core:login"
 LOGIN_REDIRECT_URL = "core:home"
 LOGOUT_REDIRECT_URL = "core:login"
+
+INVOICE_SELLER_NAME = os.getenv("INVOICE_SELLER_NAME", "").strip()
+INVOICE_SELLER_ADDRESS = os.getenv("INVOICE_SELLER_ADDRESS", "").strip()

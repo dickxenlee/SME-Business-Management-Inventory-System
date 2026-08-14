@@ -58,9 +58,14 @@ class SaleDetailView(SalesAccessMixin, DetailView):
     context_object_name = "sale"
 
     def get_queryset(self):
-        return super().get_queryset().select_related("customer", "created_by").prefetch_related(
-            "items__product",
-            "items__stock_movement",
+        return (
+            super()
+            .get_queryset()
+            .select_related("customer", "created_by", "invoice")
+            .prefetch_related(
+                "items__product",
+                "items__stock_movement",
+            )
         )
 
 
