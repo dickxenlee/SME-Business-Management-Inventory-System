@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Create sale | SME Manager{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a class="small text-decoration-none" href="{% url 'sales:list' %}">&larr; Cancel</a>
+    <h1 class="h2 mt-2 mb-1">Create sale</h1>
+    <p class="text-secondary mb-0">Prices are controlled by the current Product selling price.</p>
+</div>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    {% if sale_error %}<div class="alert alert-danger" role="alert">{{ sale_error }}</div>{% endif %}
+
+    <section class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <label class="form-label" for="{{ form.customer.id_for_label }}">Customer</label>
+            {{ form.customer }}
+            {% for error in form.customer.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            <div class="form-text">Leave blank for a walk-in customer.</div>
+        </div>
+    </section>
+
+    <section class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h2 class="h5 mb-0">Sale items</h2>
+            <button class="btn btn-sm btn-outline-primary" id="add-sale-item" type="button">Add product</button>
+        </div>
+        <div class="card-body p-4">
+            {{ item_formset.management_form }}
+            {% for error in item_formset.non_form_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+            <div id="sale-items" class="vstack gap-3">
+                {% for item_form in item_formset %}
+                    <div class="sale-item-row border rounded p-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-lg-8">
+                                <label class="form-label" for="{{ item_form.product.id_for_label }}">Product</label>
+                                {{ item_form.product }}
+                                {% for error in item_form.product.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-8 col-lg-2">
+                                <label class="form-label" for="{{ item_form.quantity.id_for_label }}">Quantity</label>
+                                {{ item_form.quantity }}
+                                {% for error in item_form.quantity.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-4 col-lg-2 text-end">
+                                <span class="d-none">{{ item_form.DELETE }}</span>
+                                <button class="btn btn-outline-danger remove-sale-item" type="button">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <div class="d-flex justify-content-end gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'sales:list' %}">Cancel</a>
+        <button class="btn btn-primary" type="submit">Complete sale</button>
+    </div>
+</form>
+
+<template id="empty-sale-item">
+    <div class="sale-item-row border rounded p-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-lg-8">
+                <label class="form-label" for="{{ item_formset.empty_form.product.id_for_label }}">Product</label>
+                {{ item_formset.empty_form.product }}
+            </div>
+            <div class="col-8 col-lg-2">
+                <label class="form-label" for="{{ item_formset.empty_form.quantity.id_for_label }}">Quantity</label>
+                {{ item_formset.empty_form.quantity }}
+            </div>
+            <div class="col-4 col-lg-2 text-end">
+                <span class="d-none">{{ item_formset.empty_form.DELETE }}</span>
+                <button class="btn btn-outline-danger remove-sale-item" type="button">Remove</button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const rows = document.getElementById("sale-items");
+    const totalForms = document.getElementById("id_items-TOTAL_FORMS");
+    const emptyTemplate = document.getElementById("empty-sale-item");
+
+    document.getElementById("add-sale-item").addEventListener("click", () => {
+        const index = Number(totalForms.value);
+        rows.insertAdjacentHTML("beforeend", emptyTemplate.innerHTML.replaceAll("__prefix__", index));
+        totalForms.value = index + 1;
+    });
+
+    rows.addEventListener("click", (event) => {
+        if (!event.target.classList.contains("remove-sale-item")) return;
+        const row = event.target.closest(".sale-item-row");
+        const deleteInput = row.querySelector('input[name$="-DELETE"]');
+        if (deleteInput) {
+            deleteInput.checked = true;
+            row.classList.add("d-none");
+        }
+    });
+});
+</script>
+{% endblock %}

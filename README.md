@@ -103,6 +103,14 @@ Authenticated Admin and Staff users can create Customers and search the Customer
 
 Customer deactivation preserves the database row. Physical Customer deletion is not available through the normal UI or Django admin. Phone, email, and address are optional; duplicate contact details are allowed.
 
+## Sales management
+
+Admin and Staff users can create immutable completed Sales for an active Customer or a walk-in customer. Each Sale may contain multiple active Products. Prices come from the current Product selling price and cannot be overridden through the Sales form.
+
+Sale creation is one PostgreSQL transaction: requested Products are locked in a consistent order, the existing Inventory service deducts stock, and every SaleItem links to its exact StockMovement. If any line is invalid or has insufficient stock, the Sale, all items, all movements, and every stock change are rolled back.
+
+Historical Sales keep Customer name/address and Product SKU/name/price snapshots. Completed Sales are read-only and cannot be edited, cancelled, or deleted through the Sales UI or Django admin.
+
 ## Verification
 
 ```powershell
