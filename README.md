@@ -94,6 +94,15 @@ New Products start with zero stock. Product forms omit stock, while Django admin
 
 Stock Adjustment records the final physically counted quantity and requires a reason. Each successful operation updates the Product balance and creates an audit record in one PostgreSQL transaction. Inactive Products reject stock operations.
 
+## Customer management
+
+Authenticated Admin and Staff users can create Customers and search the Customer directory by name, phone, or email. Results are paginated at 20 Customers per page.
+
+- **Admin:** view and edit active or inactive Customers, create Customers, and deactivate Customers.
+- **Staff:** view and edit active Customers and create Customers. Inactive Customer records are not exposed.
+
+Customer deactivation preserves the database row. Physical Customer deletion is not available through the normal UI or Django admin. Phone, email, and address are optional; duplicate contact details are allowed.
+
 ## Verification
 
 ```powershell

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}{{ customer.name }} | SME Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+    <div>
+        <a class="small text-decoration-none" href="{% url 'customers:list' %}">&larr; Back to customers</a>
+        <h1 class="h2 mt-2 mb-1">{{ customer.name }}</h1>
+        <p class="text-secondary mb-0">Customer #{{ customer.pk }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'customers:edit' customer.pk %}">Edit customer</a>
+        {% if user.is_superuser and customer.is_active %}
+            <form method="post" action="{% url 'customers:deactivate' customer.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Deactivate this customer?');">Deactivate</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<section class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Phone</dt>
+            <dd class="col-sm-8">{{ customer.phone|default:"—" }}</dd>
+            <dt class="col-sm-4">Email</dt>
+            <dd class="col-sm-8">{{ customer.email|default:"—" }}</dd>
+            <dt class="col-sm-4">Address</dt>
+            <dd class="col-sm-8">{% if customer.address %}{{ customer.address|linebreaksbr }}{% else %}—{% endif %}</dd>
+            <dt class="col-sm-4">Status</dt>
+            <dd class="col-sm-8">{% if customer.is_active %}Active{% else %}Inactive{% endif %}</dd>
+            <dt class="col-sm-4">Created</dt>
+            <dd class="col-sm-8">{{ customer.created_at|date:"j M Y, g:i a" }}</dd>
+            <dt class="col-sm-4">Last updated</dt>
+            <dd class="col-sm-8">{{ customer.updated_at|date:"j M Y, g:i a" }}</dd>
+        </dl>
+    </div>
+</section>
+{% endblock %}
