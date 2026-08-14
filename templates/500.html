@@ -1,0 +1,10 @@
+{% extends "errors/base_error.html" %}
+
+{% block title %}Something went wrong{% endblock %}
+{% block code %}HTTP 500{% endblock %}
+
+{% block content %}
+<h1>Something went wrong</h1>
+<p class="text-secondary">The request could not be completed. Please try again later.</p>
+<a class="btn btn-outline-primary" href="/">Return to SME Manager</a>
+{% endblock %}

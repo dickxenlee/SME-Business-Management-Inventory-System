@@ -1,0 +1,10 @@
+{% extends "errors/base_error.html" %}
+
+{% block title %}Request verification failed{% endblock %}
+{% block code %}HTTP 403{% endblock %}
+
+{% block content %}
+<h1>Request verification failed</h1>
+<p class="text-secondary">For your security, this request could not be verified. Reload the page and try again.</p>
+<a class="btn btn-outline-primary" href="/">Return to SME Manager</a>
+{% endblock %}

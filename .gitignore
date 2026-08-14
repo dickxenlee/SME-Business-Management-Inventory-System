@@ -20,10 +20,12 @@ htmlcov/
 # Django
 *.log
 staticfiles/
+backups/
+*.dump
+*.backup
 
 # Editors and operating systems
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
-

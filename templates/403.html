@@ -1,15 +1,10 @@
-{% extends "base.html" %}
+{% extends "errors/base_error.html" %}
 
-{% block title %}Permission denied | SME Manager{% endblock %}
+{% block title %}Permission denied{% endblock %}
+{% block code %}HTTP 403{% endblock %}
 
 {% block content %}
-<section class="bg-white border rounded-3 p-4 shadow-sm">
-    <p class="text-uppercase text-danger small fw-semibold mb-2">HTTP 403</p>
-    <h1 class="h2 mb-3">Permission denied</h1>
-    <p class="text-secondary mb-3">
-        Your account is signed in but does not have an approved application role.
-    </p>
-    <a class="btn btn-outline-primary" href="{% url 'core:home' %}">Return to dashboard</a>
-</section>
+<h1>Permission denied</h1>
+<p class="text-secondary">Your account does not have permission to access this page.</p>
+<a class="btn btn-outline-primary" href="/">Return to SME Manager</a>
 {% endblock %}
-

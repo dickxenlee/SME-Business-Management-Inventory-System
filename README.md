@@ -43,14 +43,22 @@ Available settings:
 
 | Variable | Description |
 |---|---|
+| `DJANGO_ENVIRONMENT` | `development`, `test`, or `production`; defaults to `development` |
 | `DJANGO_SECRET_KEY` | Required private Django signing key |
-| `DJANGO_DEBUG` | `True` for local development; use `False` outside development |
+| `DJANGO_DEBUG` | Local/test debug control; production always forces `False` |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated host names or IP addresses |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Comma-separated HTTPS origins required in production |
+| `DJANGO_TRUST_PROXY_SSL_HEADER` | Explicitly trust a verified platform proxy; defaults to `False` |
+| `DJANGO_SECURE_HSTS_SECONDS` | Production HSTS rollout value; defaults to `0` |
+| `DJANGO_LOG_LEVEL` | Console logging threshold; defaults to `INFO` |
 | `DB_NAME` | Required PostgreSQL database name |
 | `DB_USER` | Required PostgreSQL user |
 | `DB_PASSWORD` | Required PostgreSQL password |
 | `DB_HOST` | PostgreSQL host; defaults to `localhost` |
 | `DB_PORT` | PostgreSQL port; defaults to `5432` |
+| `DB_SSLMODE` | PostgreSQL TLS mode; production requires `require`, `verify-ca`, or `verify-full` |
+| `DB_CONNECT_TIMEOUT` | Connection timeout in seconds; defaults to `5` |
+| `DB_CONN_MAX_AGE` | Connection reuse in seconds; defaults to `0` locally and `60` in production |
 | `INVOICE_SELLER_NAME` | Required seller name copied onto each issued Invoice |
 | `INVOICE_SELLER_ADDRESS` | Required seller address copied onto each issued Invoice |
 
@@ -132,6 +140,7 @@ Sales and Inventory Movement CSV exports use the same local-calendar period and 
 ## Verification
 
 ```powershell
+python -m pip check
 python manage.py check
 python manage.py makemigrations --check
 python manage.py migrate
@@ -140,3 +149,11 @@ python manage.py collectstatic --noinput
 ```
 
 Generated static output is written to `staticfiles/` and is not committed.
+
+## Production readiness
+
+Production uses Gunicorn on Linux, WhiteNoise compressed manifest static files, secure environment-controlled Django settings, PostgreSQL health checks, and GitHub Actions with a real PostgreSQL service. The public readiness endpoint is `/health/`.
+
+See [Production deployment and recovery](docs/production-deployment.md) for required environment variables, HTTPS and trusted-proxy verification, build and migration commands, smoke testing, backups, restore drills, and rollback guidance. Verify hosting-provider pricing, regions, limits, backup features, and proxy behavior immediately before deploying.
+
+Docker is intentionally outside the current project scope.

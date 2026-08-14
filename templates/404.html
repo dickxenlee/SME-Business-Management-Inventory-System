@@ -1,0 +1,10 @@
+{% extends "errors/base_error.html" %}
+
+{% block title %}Page not found{% endblock %}
+{% block code %}HTTP 404{% endblock %}
+
+{% block content %}
+<h1>Page not found</h1>
+<p class="text-secondary">The page you requested does not exist or is no longer available.</p>
+<a class="btn btn-outline-primary" href="/">Return to SME Manager</a>
+{% endblock %}

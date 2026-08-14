@@ -1,4 +1,5 @@
 Django==5.2.16
+gunicorn==26.0.0
 psycopg[binary]==3.3.4
 python-dotenv==1.2.1
-
+whitenoise==6.12.0

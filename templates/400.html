@@ -1,0 +1,10 @@
+{% extends "errors/base_error.html" %}
+
+{% block title %}Bad request{% endblock %}
+{% block code %}HTTP 400{% endblock %}
+
+{% block content %}
+<h1>Bad request</h1>
+<p class="text-secondary">The request could not be processed. Check the address or submitted information and try again.</p>
+<a class="btn btn-outline-primary" href="/">Return to SME Manager</a>
+{% endblock %}
