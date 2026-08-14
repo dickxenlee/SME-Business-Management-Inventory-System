@@ -83,11 +83,16 @@ ALTER ROLE sme_manager_user CREATEDB;
 
 A production application role should not normally receive this permission.
 
-## Product management
+## Product and inventory management
 
 Authenticated Staff users can search, paginate, list, and view active products. Django superusers can additionally view inactive products, create and edit products, and deactivate products without deleting their database rows.
 
-During Phase 3, Administrators may edit `current_stock` directly on the Product form. A future Inventory phase will replace direct edits with transactional stock movements.
+New Products start with zero stock. Product forms omit stock, while Django admin displays it as read-only; use the Inventory workflow for every change:
+
+- **Admin:** view movement history, Stock In, Stock Out, and Stock Adjustment.
+- **Staff:** view permitted movement history, Stock In, and Stock Out.
+
+Stock Adjustment records the final physically counted quantity and requires a reason. Each successful operation updates the Product balance and creates an audit record in one PostgreSQL transaction. Inactive Products reject stock operations.
 
 ## Verification
 

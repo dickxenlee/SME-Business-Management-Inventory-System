@@ -9,17 +9,24 @@
         <h1 class="h2 mt-2 mb-1">{{ product.name }}</h1>
         <p class="text-secondary mb-0">{{ product.sku }}</p>
     </div>
-    {% if user.is_superuser %}
-        <div class="d-flex gap-2">
-            <a class="btn btn-outline-secondary" href="{% url 'products:edit' product.pk %}">Edit</a>
+    <div class="d-flex flex-wrap gap-2">
+        {% if product.is_active %}
+            <a class="btn btn-success" href="{% url 'inventory:stock_in' %}?product={{ product.pk }}">Stock In</a>
+            <a class="btn btn-outline-primary" href="{% url 'inventory:stock_out' %}?product={{ product.pk }}">Stock Out</a>
+            {% if user.is_superuser %}
+                <a class="btn btn-outline-secondary" href="{% url 'inventory:adjustment' %}?product={{ product.pk }}">Adjust stock</a>
+            {% endif %}
+        {% endif %}
+        {% if user.is_superuser %}
+            <a class="btn btn-outline-secondary" href="{% url 'products:edit' product.pk %}">Edit product</a>
             {% if product.is_active %}
                 <form method="post" action="{% url 'products:deactivate' product.pk %}">
                     {% csrf_token %}
                     <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Deactivate this product?');">Deactivate</button>
                 </form>
             {% endif %}
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
 </div>
 
 <section class="card border-0 shadow-sm">
@@ -47,4 +54,3 @@
     </div>
 </section>
 {% endblock %}
-

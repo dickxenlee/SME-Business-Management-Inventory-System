@@ -63,6 +63,7 @@ class ProductViewTests(TestCase):
 
         product = Product.objects.get(sku="PRD-NEW")
         self.assertRedirects(response, reverse("products:detail", args=[product.pk]))
+        self.assertEqual(product.current_stock, 0)
 
     def test_invalid_product_creation_fails_without_saving(self):
         response = self.client.post(
@@ -91,12 +92,26 @@ class ProductViewTests(TestCase):
             reverse("products:detail", args=[self.product.pk]),
         )
         self.assertEqual(self.product.name, "Updated Keyboard")
-        self.assertEqual(self.product.current_stock, 9)
+        self.assertEqual(self.product.current_stock, 3)
+
+    def test_rogue_stock_value_cannot_change_stock_during_edit(self):
+        response = self.client.post(
+            reverse("products:edit", args=[self.product.pk]),
+            self.product_data(
+                sku="prd-001",
+                name="Updated without stock",
+                current_stock="99",
+            ),
+        )
+
+        self.product.refresh_from_db()
+        self.assertRedirects(response, reverse("products:detail", args=[self.product.pk]))
+        self.assertEqual(self.product.current_stock, 3)
 
     def test_invalid_edit_leaves_stored_product_unchanged(self):
         response = self.client.post(
             reverse("products:edit", args=[self.product.pk]),
-            self.product_data(sku="prd-001", name="Unsafe update", current_stock="-1"),
+            self.product_data(sku="prd-001", name="Unsafe update", selling_price="-1"),
         )
 
         self.product.refresh_from_db()

@@ -11,7 +11,6 @@ class ProductForm(forms.ModelForm):
             "name",
             "selling_price",
             "cost_price",
-            "current_stock",
             "low_stock_threshold",
         )
 
@@ -23,3 +22,16 @@ class ProductForm(forms.ModelForm):
     def clean_sku(self):
         return Product.normalize_sku(self.cleaned_data["sku"])
 
+    def save(self, commit=True):
+        """Save Product metadata without writing a stale stock value."""
+        is_new = self.instance._state.adding
+        product = super().save(commit=False)
+        if not commit:
+            return product
+
+        if is_new:
+            product.save()
+        else:
+            product.save(update_fields=(*self.Meta.fields, "updated_at"))
+        self.save_m2m()
+        return product

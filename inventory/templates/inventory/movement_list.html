@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory | SME Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-secondary small fw-semibold mb-1">Audit trail</p>
+        <h1 class="h2 mb-0">Inventory movements</h1>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-success" href="{% url 'inventory:stock_in' %}">Stock In</a>
+        <a class="btn btn-outline-primary" href="{% url 'inventory:stock_out' %}">Stock Out</a>
+        {% if user.is_superuser %}
+            <a class="btn btn-outline-secondary" href="{% url 'inventory:adjustment' %}">Adjustment</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<form class="card card-body border-0 shadow-sm mb-4" method="get">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md">
+            <label class="form-label" for="movement-search">Product SKU or name</label>
+            <input class="form-control" id="movement-search" name="q" value="{{ query }}" placeholder="e.g. KEY-001 or Keyboard">
+        </div>
+        <div class="col-12 col-md-3">
+            <label class="form-label" for="movement-type">Movement type</label>
+            <select class="form-select" id="movement-type" name="movement_type">
+                <option value="">All movement types</option>
+                {% for value, label in movement_types %}
+                    <option value="{{ value }}"{% if selected_movement_type == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-12 col-md-auto d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Filter</button>
+            {% if query or selected_movement_type %}
+                <a class="btn btn-outline-secondary" href="{% url 'inventory:history' %}">Clear</a>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+<div class="card border-0 shadow-sm overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">Date/time</th>
+                    <th scope="col">SKU</th>
+                    <th scope="col">Product</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Previous</th>
+                    <th scope="col">New</th>
+                    <th scope="col">User</th>
+                    <th scope="col">Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for movement in stock_movements %}
+                    <tr>
+                        <td class="text-nowrap">{{ movement.created_at|date:"j M Y, g:i a" }}</td>
+                        <td class="fw-semibold">{{ movement.product.sku }}</td>
+                        <td>{{ movement.product.name }}</td>
+                        <td>{{ movement.get_movement_type_display }}</td>
+                        <td>{{ movement.quantity }}</td>
+                        <td>{{ movement.previous_stock }}</td>
+                        <td>{{ movement.new_stock }}</td>
+                        <td>{% if movement.performed_by %}{{ movement.performed_by.username }}{% else %}System{% endif %}</td>
+                        <td>{{ movement.reason|default:"—" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td class="text-center text-secondary py-5" colspan="9">No stock movements found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if is_paginated %}
+    <nav class="mt-4" aria-label="Inventory movement pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}{% if selected_movement_type %}&amp;movement_type={{ selected_movement_type|urlencode }}{% endif %}">Previous</a>
+                </li>
+            {% endif %}
+            <li class="page-item disabled">
+                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}{% if selected_movement_type %}&amp;movement_type={{ selected_movement_type|urlencode }}{% endif %}">Next</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+{% endblock %}

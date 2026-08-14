@@ -45,7 +45,6 @@ class ProductFormTests(TestCase):
         fields = (
             "selling_price",
             "cost_price",
-            "current_stock",
             "low_stock_threshold",
         )
 
@@ -69,3 +68,7 @@ class ProductFormTests(TestCase):
 
         self.assertNotIn("is_active", form.fields)
 
+    def test_current_stock_is_not_exposed_by_product_form(self):
+        form = ProductForm()
+
+        self.assertNotIn("current_stock", form.fields)
