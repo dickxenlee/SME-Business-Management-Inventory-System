@@ -1,4 +1,5 @@
 import csv
+from datetime import timedelta
 from decimal import Decimal
 from io import StringIO
 
@@ -6,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from inventory.models import StockMovement
 from products.models import Product
@@ -34,12 +36,16 @@ class ReportExportTests(TestCase):
         body = b"".join(response.streaming_content).decode("utf-8")
         return list(csv.reader(StringIO(body)))
 
+    def today_at(self, hour=12, minute=0):
+        today = timezone.localdate()
+        return local_datetime(today.year, today.month, today.day, hour, minute)
+
     def test_sales_csv_has_one_row_per_sale_and_does_not_repeat_total(self):
         sale = create_sale(
-            user=self.staff, at=local_datetime(2026, 8, 14),
+            user=self.staff, at=self.today_at(),
             items=[(self.product, 1, "12.50")],
         )
-        create_invoice(sale=sale, user=self.staff, at=local_datetime(2026, 8, 14))
+        create_invoice(sale=sale, user=self.staff, at=self.today_at())
         self.client.force_login(self.staff)
 
         response = self.client.get(
@@ -56,7 +62,7 @@ class ReportExportTests(TestCase):
 
     def test_sales_csv_sanitizes_customer_and_username_formula_prefixes(self):
         sale = create_sale(
-            user=self.staff, at=local_datetime(2026, 8, 14),
+            user=self.staff, at=self.today_at(),
             items=[(self.product, 1, "12.50")],
         )
         sale.customer_name = "=SUM(A1:A2)"
@@ -79,7 +85,7 @@ class ReportExportTests(TestCase):
             performed_by=self.staff,
         )
         StockMovement.objects.filter(pk=movement.pk).update(
-            created_at=local_datetime(2026, 8, 14)
+            created_at=self.today_at()
         )
         self.client.force_login(self.staff)
 
@@ -101,7 +107,7 @@ class ReportExportTests(TestCase):
             previous_stock=0, new_stock=1, reason="Historical", performed_by=self.admin,
         )
         StockMovement.objects.filter(pk=movement.pk).update(
-            created_at=local_datetime(2026, 8, 14)
+            created_at=self.today_at()
         )
 
         self.client.force_login(self.staff)
@@ -117,12 +123,15 @@ class ReportExportTests(TestCase):
         self.assertEqual(len(admin_rows), 2)
 
     def test_csv_uses_local_half_open_period_boundary(self):
+        today = timezone.localdate()
+        tomorrow = today + timedelta(days=1)
         create_sale(
-            user=self.staff, at=local_datetime(2026, 8, 14, 23, 59),
+            user=self.staff, at=self.today_at(23, 59),
             items=[(self.product, 1, "10.00")],
         )
         create_sale(
-            user=self.staff, at=local_datetime(2026, 8, 15, 0, 0),
+            user=self.staff,
+            at=local_datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0),
             items=[(self.product, 1, "20.00")],
         )
         self.client.force_login(self.staff)
