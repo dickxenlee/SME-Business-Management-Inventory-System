@@ -13,7 +13,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 class ProductionSettingsTests(SimpleTestCase):
     def run_settings_probe(self, **overrides):
         environment = os.environ.copy()
-        environment.pop("DJANGO_SECURE_SSL_REDIRECT", None)
         environment.update(
             {
                 "DJANGO_SETTINGS_MODULE": "sme_manager.settings",
@@ -53,6 +52,7 @@ print(json.dumps({
     "session_secure": settings.SESSION_COOKIE_SECURE,
     "csrf_secure": settings.CSRF_COOKIE_SECURE,
     "ssl_redirect": settings.SECURE_SSL_REDIRECT,
+    "redirect_exempt": settings.SECURE_REDIRECT_EXEMPT,
     "hsts_seconds": settings.SECURE_HSTS_SECONDS,
     "hsts_subdomains": settings.SECURE_HSTS_INCLUDE_SUBDOMAINS,
     "hsts_preload": settings.SECURE_HSTS_PRELOAD,
@@ -125,11 +125,20 @@ print(json.dumps({
             ["HTTP_X_FORWARDED_PROTO", "https"],
         )
 
-    def test_production_ssl_redirect_can_be_explicitly_disabled(self):
+    def test_production_ssl_redirect_cannot_be_disabled_by_environment(self):
         result = self.run_settings_probe(DJANGO_SECURE_SSL_REDIRECT="False")
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIs(json.loads(result.stdout)["ssl_redirect"], False)
+        self.assertIs(json.loads(result.stdout)["ssl_redirect"], True)
+
+    def test_only_the_health_path_is_exempt_from_the_ssl_redirect(self):
+        result = self.run_settings_probe()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            json.loads(result.stdout)["redirect_exempt"],
+            ["^health/$"],
+        )
 
     def test_hsts_seconds_are_environment_controlled(self):
         result = self.run_settings_probe(DJANGO_SECURE_HSTS_SECONDS="3600")

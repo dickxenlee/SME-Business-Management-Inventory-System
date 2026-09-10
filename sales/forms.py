@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import BaseFormSet, formset_factory
+from django.forms.formsets import DELETION_FIELD_NAME
 
 from customers.models import Customer
 from inventory.services import MAX_STOCK_QUANTITY
@@ -44,15 +45,28 @@ class SaleItemForm(forms.Form):
 
 
 class BaseSaleItemFormSet(BaseFormSet):
+    def add_fields(self, form, index):
+        """Present the deletion flag as a visible, reversible control."""
+        super().add_fields(form, index)
+        if DELETION_FIELD_NAME in form.fields:
+            delete_field = form.fields[DELETION_FIELD_NAME]
+            delete_field.label = "Removed"
+            delete_field.widget.attrs["class"] = "form-check-input"
+
+    def _is_deleted(self, form):
+        return self.can_delete and self._should_delete_form(form)
+
     def clean(self):
         super().clean()
-        if any(form.errors for form in self.forms):
+        # Forms marked for deletion are excluded from is_valid(), so their
+        # errors must not suppress the checks below either.
+        if any(form.errors for form in self.forms if not self._is_deleted(form)):
             return
 
         product_ids = set()
         item_count = 0
         for form in self.forms:
-            if self.can_delete and self._should_delete_form(form):
+            if self._is_deleted(form):
                 continue
             product = form.cleaned_data.get("product")
             if product is None:

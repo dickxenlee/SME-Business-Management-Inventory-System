@@ -103,6 +103,8 @@ GET /health/
 
 The endpoint returns HTTP 200 only when Django can perform a minimal PostgreSQL query. It returns a generic HTTP 503 response on database failure and never includes connection details.
 
+`/health/` is the only path listed in `SECURE_REDIRECT_EXEMPT`, so a probe that requests it over plain HTTP receives the status response instead of an HTTPS redirect. Every other path is still redirected to HTTPS in production, and that redirect is not environment-controlled. Do not widen this exemption to make a probe pass.
+
 ## First deployment
 
 1. Confirm GitHub Actions is green.
