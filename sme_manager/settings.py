@@ -239,9 +239,11 @@ LOGOUT_REDIRECT_URL = "core:login"
 
 SESSION_COOKIE_SECURE = IS_PRODUCTION
 CSRF_COOKIE_SECURE = IS_PRODUCTION
-SECURE_SSL_REDIRECT = env_bool(
-    "DJANGO_SECURE_SSL_REDIRECT", default=IS_PRODUCTION
-)
+SECURE_SSL_REDIRECT = IS_PRODUCTION
+# The platform health probe requests /health/ over plain HTTP and treats the
+# HTTPS redirect as a failure. Exempt only that path so every other request
+# is still upgraded.
+SECURE_REDIRECT_EXEMPT = [r"^health/$"]
 SECURE_HSTS_SECONDS = (
     env_int("DJANGO_SECURE_HSTS_SECONDS", 0, minimum=0) if IS_PRODUCTION else 0
 )

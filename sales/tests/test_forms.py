@@ -134,3 +134,89 @@ class SaleFormTests(TestCase):
         self.assertEqual(cleaned[0]["product"], self.active_product)
         self.assertEqual(cleaned[0]["quantity"], 2)
         self.assertEqual(cleaned[1]["product"], second_product)
+
+
+class SaleItemDeletionStateTests(TestCase):
+    """Regression cover for line items silently dropped after a re-render."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alpha = Product.objects.create(
+            sku="DEL-1",
+            name="Alpha",
+            selling_price=Decimal("10.00"),
+            cost_price=Decimal("5.00"),
+            current_stock=100,
+        )
+        cls.bravo = Product.objects.create(
+            sku="DEL-2",
+            name="Bravo",
+            selling_price=Decimal("20.00"),
+            cost_price=Decimal("9.00"),
+            current_stock=100,
+        )
+
+    def formset_data(self, rows):
+        data = {
+            "items-TOTAL_FORMS": str(len(rows)),
+            "items-INITIAL_FORMS": "0",
+            "items-MIN_NUM_FORMS": "1",
+            "items-MAX_NUM_FORMS": "1000",
+        }
+        for index, row in enumerate(rows):
+            for name, value in row.items():
+                data[f"items-{index}-{name}"] = value
+        return data
+
+    def test_deletion_checkbox_is_rendered_visibly(self):
+        formset = SaleItemFormSet(prefix="items")
+        rendered = str(formset.forms[0]["DELETE"])
+
+        self.assertIn("form-check-input", rendered)
+        self.assertNotIn("type=\"hidden\"", rendered)
+
+    def test_deletion_checkbox_keeps_its_checked_state_for_re_render(self):
+        formset = SaleItemFormSet(
+            self.formset_data(
+                [
+                    {"product": self.alpha.pk, "quantity": "2"},
+                    {"product": self.bravo.pk, "quantity": "5", "DELETE": "on"},
+                ]
+            ),
+            prefix="items",
+        )
+        self.assertTrue(formset.is_valid(), formset.errors)
+
+        # The template derives the removed styling from this checkbox, so the
+        # state has to survive a bound re-render for the two to stay in sync.
+        self.assertIn("checked", str(formset.forms[1]["DELETE"]))
+        self.assertNotIn("checked", str(formset.forms[0]["DELETE"]))
+
+    def test_duplicate_products_are_rejected_despite_a_broken_deleted_row(self):
+        formset = SaleItemFormSet(
+            self.formset_data(
+                [
+                    {"product": self.alpha.pk, "quantity": "2"},
+                    {"product": self.alpha.pk, "quantity": "3"},
+                    {"product": self.bravo.pk, "quantity": "oops", "DELETE": "on"},
+                ]
+            ),
+            prefix="items",
+        )
+
+        self.assertFalse(formset.is_valid())
+        self.assertIn(
+            "Each product may appear only once in a Sale.",
+            formset.non_form_errors(),
+        )
+
+    def test_errors_on_a_deleted_row_do_not_suppress_the_empty_sale_check(self):
+        formset = SaleItemFormSet(
+            self.formset_data(
+                [{"product": self.alpha.pk, "quantity": "nope", "DELETE": "on"}]
+            ),
+            prefix="items",
+        )
+
+        self.assertFalse(formset.is_valid())
+        self.assertTrue(formset.non_form_errors())

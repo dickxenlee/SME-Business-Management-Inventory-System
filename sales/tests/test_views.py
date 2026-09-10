@@ -132,3 +132,69 @@ class SaleViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "View Customer")
         self.assertContains(response, "VIEW-SALE-1")
+
+
+class SaleFormRemovedRowRenderTests(TestCase):
+    """A removed line must stay identifiable after the server re-renders."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin_user = get_user_model().objects.create_superuser(
+            username="sales-removed-row-admin",
+            password="test-password-123",
+        )
+
+    def setUp(self):
+        self.client.force_login(self.admin_user)
+        self.alpha = Product.objects.create(
+            sku="ROW-1",
+            name="Alpha",
+            selling_price=Decimal("10.00"),
+            cost_price=Decimal("5.00"),
+            current_stock=100,
+        )
+        self.bravo = Product.objects.create(
+            sku="ROW-2",
+            name="Bravo",
+            selling_price=Decimal("20.00"),
+            cost_price=Decimal("9.00"),
+            current_stock=100,
+        )
+        self.charlie = Product.objects.create(
+            sku="ROW-3",
+            name="Charlie",
+            selling_price=Decimal("30.00"),
+            cost_price=Decimal("9.00"),
+            current_stock=1,
+        )
+
+    def test_removed_row_is_re_rendered_with_a_visible_checked_control(self):
+        response = self.client.post(
+            reverse("sales:create"),
+            {
+                "customer": "",
+                "items-TOTAL_FORMS": "3",
+                "items-INITIAL_FORMS": "0",
+                "items-MIN_NUM_FORMS": "1",
+                "items-MAX_NUM_FORMS": "1000",
+                "items-0-product": self.alpha.pk,
+                "items-0-quantity": "2",
+                "items-1-product": self.bravo.pk,
+                "items-1-quantity": "5",
+                "items-1-DELETE": "on",
+                "items-2-product": self.charlie.pk,
+                "items-2-quantity": "50",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Insufficient stock")
+
+        html = response.content.decode()
+        self.assertIn('name="items-1-DELETE"', html)
+        # The control must not be hidden, or the user cannot see or undo the
+        # removal and the next submit silently drops a visible line.
+        self.assertNotIn('<span class="d-none">', html)
+        self.assertIn("form-check-input", html)
+        self.assertNotIn("Sale was completed", html)
+        self.assertFalse(Sale.objects.exists())

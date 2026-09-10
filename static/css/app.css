@@ -374,6 +374,19 @@ body {
     }
 }
 
+/* A Sale line staged for removal stays visible and restorable, so the form
+   never submits a line the user can still see as active. */
+.sale-item-removed {
+    background-color: #f8f9fa;
+    border-style: dashed !important;
+    opacity: 0.6;
+}
+
+.sale-item-removed .form-select,
+.sale-item-removed .form-control {
+    text-decoration: line-through;
+}
+
 @media print {
     @page {
         margin: 14mm;

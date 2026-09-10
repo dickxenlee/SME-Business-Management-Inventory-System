@@ -45,7 +45,10 @@
                                 {% for error in item_form.quantity.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                             </div>
                             <div class="col-4 col-lg-2 text-end">
-                                <span class="d-none">{{ item_form.DELETE }}</span>
+                                <div class="form-check d-flex justify-content-end align-items-center gap-2 mb-2">
+                                    {{ item_form.DELETE }}
+                                    <label class="form-check-label small text-secondary" for="{{ item_form.DELETE.id_for_label }}">Removed</label>
+                                </div>
                                 <button class="btn btn-outline-danger remove-sale-item" type="button">Remove</button>
                             </div>
                         </div>
@@ -73,7 +76,10 @@
                 {{ item_formset.empty_form.quantity }}
             </div>
             <div class="col-4 col-lg-2 text-end">
-                <span class="d-none">{{ item_formset.empty_form.DELETE }}</span>
+                <div class="form-check d-flex justify-content-end align-items-center gap-2 mb-2">
+                    {{ item_formset.empty_form.DELETE }}
+                    <label class="form-check-label small text-secondary" for="{{ item_formset.empty_form.DELETE.id_for_label }}">Removed</label>
+                </div>
                 <button class="btn btn-outline-danger remove-sale-item" type="button">Remove</button>
             </div>
         </div>
@@ -86,10 +92,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const totalForms = document.getElementById("id_items-TOTAL_FORMS");
     const emptyTemplate = document.getElementById("empty-sale-item");
 
+    // The server re-renders the checkbox state after a failed submit, so the
+    // row styling is always derived from the checkbox rather than tracked
+    // separately. Otherwise a removed row can come back looking active.
+    const syncRow = (row) => {
+        const deleteInput = row.querySelector('input[name$="-DELETE"]');
+        if (!deleteInput) return;
+        const removed = deleteInput.checked;
+        row.classList.toggle("sale-item-removed", removed);
+        const button = row.querySelector(".remove-sale-item");
+        if (button) {
+            button.textContent = removed ? "Restore" : "Remove";
+            button.classList.toggle("btn-outline-danger", !removed);
+            button.classList.toggle("btn-outline-secondary", removed);
+        }
+    };
+
+    const syncAllRows = () => {
+        rows.querySelectorAll(".sale-item-row").forEach(syncRow);
+    };
+
     document.getElementById("add-sale-item").addEventListener("click", () => {
         const index = Number(totalForms.value);
         rows.insertAdjacentHTML("beforeend", emptyTemplate.innerHTML.replaceAll("__prefix__", index));
         totalForms.value = index + 1;
+        syncRow(rows.lastElementChild);
     });
 
     rows.addEventListener("click", (event) => {
@@ -97,10 +124,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const row = event.target.closest(".sale-item-row");
         const deleteInput = row.querySelector('input[name$="-DELETE"]');
         if (deleteInput) {
-            deleteInput.checked = true;
-            row.classList.add("d-none");
+            deleteInput.checked = !deleteInput.checked;
+            syncRow(row);
         }
     });
+
+    rows.addEventListener("change", (event) => {
+        if (!event.target.matches('input[name$="-DELETE"]')) return;
+        syncRow(event.target.closest(".sale-item-row"));
+    });
+
+    syncAllRows();
 });
 </script>
 {% endblock %}
