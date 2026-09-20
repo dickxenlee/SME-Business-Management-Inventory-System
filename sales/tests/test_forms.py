@@ -71,7 +71,8 @@ class SaleFormTests(TestCase):
         choices = dict(form.fields["product"].choices)
 
         self.assertIn("RM 15.00", choices[self.active_product.pk])
-        self.assertIn("Stock: 5", choices[self.active_product.pk])
+        self.assertIn("5 in stock", choices[self.active_product.pk])
+        self.assertIn("Active Product", choices[self.active_product.pk])
 
     def test_only_active_products_are_selectable(self):
         form = SaleItemForm()

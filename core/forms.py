@@ -8,4 +8,8 @@ class BootstrapAuthenticationForm(AuthenticationForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs["class"] = "form-control"
+        # Land the cursor in the first field so signing in needs no clicking.
+        self.fields["username"].widget.attrs["autofocus"] = True
+        self.fields["username"].widget.attrs["autocomplete"] = "username"
+        self.fields["password"].widget.attrs["autocomplete"] = "current-password"
 

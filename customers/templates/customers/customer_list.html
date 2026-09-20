@@ -63,7 +63,7 @@
                             {% if user.is_superuser and customer.is_active %}
                                 <form class="d-inline" method="post" action="{% url 'customers:deactivate' customer.pk %}">
                                     {% csrf_token %}
-                                    <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Deactivate this customer?');">Deactivate</button>
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Deactivate “{{ customer.name|escapejs }}”? They will no longer appear in new Sales.');">Deactivate</button>
                                 </form>
                             {% endif %}
                         </td>
