@@ -11,12 +11,6 @@
     <a class="btn btn-primary" href="{% url 'customers:create' %}">Create customer</a>
 </div>
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
-    {% endfor %}
-{% endif %}
-
 <form class="card card-body border-0 shadow-sm mb-4" method="get">
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md">
@@ -57,13 +51,13 @@
                                 <span class="badge text-bg-secondary">Inactive</span>
                             {% endif %}
                         </td>
-                        <td class="text-end text-nowrap">
+                        <td class="text-end row-actions">
                             <a class="btn btn-sm btn-outline-primary" href="{% url 'customers:detail' customer.pk %}">View</a>
                             <a class="btn btn-sm btn-outline-secondary" href="{% url 'customers:edit' customer.pk %}">Edit</a>
                             {% if user.is_superuser and customer.is_active %}
                                 <form class="d-inline" method="post" action="{% url 'customers:deactivate' customer.pk %}">
                                     {% csrf_token %}
-                                    <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Deactivate this customer?');">Deactivate</button>
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Deactivate “{{ customer.name|escapejs }}”? They will no longer appear in new Sales.');">Deactivate</button>
                                 </form>
                             {% endif %}
                         </td>

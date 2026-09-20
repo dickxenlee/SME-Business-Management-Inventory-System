@@ -22,7 +22,7 @@
             {% if product.is_active %}
                 <form method="post" action="{% url 'products:deactivate' product.pk %}">
                     {% csrf_token %}
-                    <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Deactivate this product?');">Deactivate</button>
+                    <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Deactivate “{{ product.name|escapejs }}”? It will no longer appear in new Sales.');">Deactivate</button>
                 </form>
             {% endif %}
         {% endif %}

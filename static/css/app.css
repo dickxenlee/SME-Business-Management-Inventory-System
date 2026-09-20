@@ -387,6 +387,23 @@ body {
     text-decoration: line-through;
 }
 
+/* The badge is the visible marker of the removed state; it is rendered by the
+   server so the state reads correctly before any script runs. */
+.sale-item-removed-badge {
+    display: none;
+}
+
+.sale-item-removed .sale-item-removed-badge {
+    display: inline-block;
+}
+
+.sale-total-bar {
+    position: sticky;
+    bottom: 0;
+    background-color: #fff;
+    z-index: 2;
+}
+
 @media print {
     @page {
         margin: 14mm;
@@ -430,5 +447,43 @@ body {
 
     .print-only {
         display: inline;
+    }
+}
+
+/* Keyboard users need a way past the navigation; visible only on focus. */
+.skip-link {
+    position: absolute;
+    left: -999px;
+    top: 0;
+    z-index: 1080;
+    padding: 0.5rem 1rem;
+    background-color: #fff;
+    border: 1px solid #0d6efd;
+    border-radius: 0 0 0.25rem 0;
+}
+
+.skip-link:focus {
+    left: 0;
+}
+
+/* Row actions sit side by side on wide screens. On a phone three inline
+   buttons push the column past the viewport, so stack them instead. */
+.row-actions {
+    white-space: nowrap;
+}
+
+@media (max-width: 991.98px) {
+    .row-actions {
+        white-space: normal;
+    }
+
+    .row-actions .btn,
+    .row-actions form {
+        display: block;
+    }
+
+    .row-actions .btn + .btn,
+    .row-actions form {
+        margin-top: 0.25rem;
     }
 }

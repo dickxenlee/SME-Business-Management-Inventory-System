@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -102,7 +103,7 @@ class SaleViewTests(TestCase):
 
         self.product.refresh_from_db()
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Insufficient stock")
+        self.assertContains(response, "Only 5 left of View Sale Product")
         self.assertEqual(self.product.current_stock, 5)
         self.assertEqual(Sale.objects.count(), 0)
         self.assertEqual(StockMovement.objects.count(), 0)
@@ -168,7 +169,7 @@ class SaleFormRemovedRowRenderTests(TestCase):
             current_stock=1,
         )
 
-    def test_removed_row_is_re_rendered_with_a_visible_checked_control(self):
+    def test_removed_row_is_re_rendered_visibly_marked_as_removed(self):
         response = self.client.post(
             reverse("sales:create"),
             {
@@ -188,13 +189,20 @@ class SaleFormRemovedRowRenderTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Insufficient stock")
+        self.assertContains(response, "Only 1 left of Charlie")
 
         html = response.content.decode()
         self.assertIn('name="items-1-DELETE"', html)
-        # The control must not be hidden, or the user cannot see or undo the
-        # removal and the next submit silently drops a visible line.
-        self.assertNotIn('<span class="d-none">', html)
-        self.assertIn("form-check-input", html)
+        # The removed state is rendered by the server, so the row still reads
+        # as removed before any script runs. Without this the row comes back
+        # looking active and the next submit silently drops a visible line.
+        # Exclude the <template> used to clone new rows client-side.
+        rendered_form = html.split('<template id="empty-sale-item">')[0]
+        row_classes = re.findall(r'class="(sale-item-row[^"]*)"', rendered_form)
+        self.assertEqual(len(row_classes), 3)
+        self.assertNotIn("sale-item-removed", row_classes[0])
+        self.assertIn("sale-item-removed", row_classes[1])
+        self.assertNotIn("sale-item-removed", row_classes[2])
+        self.assertIn("Removed from sale", html)
         self.assertNotIn("Sale was completed", html)
         self.assertFalse(Sale.objects.exists())

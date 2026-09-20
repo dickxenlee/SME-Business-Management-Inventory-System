@@ -73,7 +73,7 @@ class SaleConcurrencyTests(TransactionTestCase):
         self.assertEqual(len(successes), 1)
         self.assertEqual(len(errors), 1)
         self.assertIsInstance(errors[0], SalesOperationError)
-        self.assertIn("Insufficient stock", str(errors[0]))
+        self.assertIn("Only 1 left of", str(errors[0]))
         self.assertEqual(product.current_stock, 1)
         self.assertEqual(Sale.objects.count(), 1)
         movement = StockMovement.objects.get()

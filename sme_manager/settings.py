@@ -221,7 +221,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-us"
+# en-gb gives dd/mm/yyyy date inputs and formatting, which matches local
+# convention; en-us rendered mm/dd/yyyy on a Kuala Lumpur, MYR application.
+LANGUAGE_CODE = "en-gb"
 TIME_ZONE = "Asia/Kuala_Lumpur"
 USE_I18N = True
 USE_TZ = True

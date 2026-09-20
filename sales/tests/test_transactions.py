@@ -42,7 +42,7 @@ class SaleTransactionTests(TestCase):
         self.assertEqual(StockMovement.objects.count(), 0)
 
     def test_insufficient_last_product_rejects_complete_sale(self):
-        with self.assertRaisesMessage(SalesOperationError, "Insufficient stock"):
+        with self.assertRaisesMessage(SalesOperationError, "Only 2 left of Rollback B"):
             create_sale(
                 customer_id=None,
                 items=[

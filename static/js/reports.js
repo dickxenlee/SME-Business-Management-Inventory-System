@@ -32,7 +32,17 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } },
+                scales: {
+                    y: { beginAtZero: true },
+                    x: {
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 10,
+                            maxRotation: 0,
+                            minRotation: 0,
+                        },
+                    },
+                },
             },
         });
     }

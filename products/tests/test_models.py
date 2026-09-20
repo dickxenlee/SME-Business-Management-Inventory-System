@@ -159,3 +159,35 @@ class ProductModelTests(TestCase):
 
         self.assertTrue(Product.objects.filter(pk=product.pk).exists())
         self.assertFalse(Product.objects.get(pk=product.pk).is_active)
+
+
+class ProductMarginRateTests(TestCase):
+    def test_margin_rate_is_the_current_gross_margin_percentage(self):
+        product = Product.objects.create(
+            sku="MARGIN-RATE",
+            name="Margin Rate Product",
+            selling_price=Decimal("25.00"),
+            cost_price=Decimal("10.00"),
+        )
+
+        self.assertEqual(product.margin_rate, Decimal("60.0"))
+
+    def test_margin_rate_is_none_when_the_product_is_free(self):
+        product = Product.objects.create(
+            sku="MARGIN-ZERO",
+            name="Free Sample",
+            selling_price=Decimal("0.00"),
+            cost_price=Decimal("0.00"),
+        )
+
+        self.assertIsNone(product.margin_rate)
+
+    def test_margin_rate_goes_negative_when_cost_exceeds_price(self):
+        product = Product.objects.create(
+            sku="MARGIN-LOSS",
+            name="Loss Leader",
+            selling_price=Decimal("10.00"),
+            cost_price=Decimal("15.00"),
+        )
+
+        self.assertEqual(product.margin_rate, Decimal("-50.0"))
