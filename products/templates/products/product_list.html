@@ -30,30 +30,30 @@
 
 <div class="card border-0 shadow-sm overflow-hidden">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0 table-cards">
             <thead class="table-light">
                 <tr>
-                    <th scope="col" class="d-none d-lg-table-cell">SKU</th>
+                    <th scope="col">SKU</th>
                     <th scope="col">Name</th>
                     <th scope="col">Selling price</th>
-                    <th scope="col" class="d-none d-lg-table-cell">Cost</th>
-                    <th scope="col" class="d-none d-lg-table-cell">Margin</th>
+                    <th scope="col">Cost</th>
+                    <th scope="col">Margin</th>
                     <th scope="col">Stock</th>
                     <th scope="col">Stock status</th>
-                    <th scope="col" class="d-none d-lg-table-cell">Active status</th>
+                    <th scope="col">Active status</th>
                     <th scope="col" class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for product in products %}
                     <tr>
-                        <td class="fw-semibold d-none d-lg-table-cell">{{ product.sku }}</td>
-                        <td>{{ product.name }}<span class="d-lg-none d-block small text-secondary">{{ product.sku }}</span></td>
-                        <td>RM {{ product.selling_price|floatformat:2 }}</td>
-                        <td class="text-secondary d-none d-lg-table-cell">RM {{ product.cost_price|floatformat:2 }}</td>
-                        <td class="d-none d-lg-table-cell">{% if product.margin_rate is not None %}{{ product.margin_rate|floatformat:1 }}%{% else %}&mdash;{% endif %}</td>
-                        <td>{{ product.current_stock }}</td>
-                        <td>
+                        <td data-label="SKU" class="fw-semibold">{{ product.sku }}</td>
+                        <td data-label="Name">{{ product.name }}</td>
+                        <td data-label="Selling price">RM {{ product.selling_price|floatformat:2 }}</td>
+                        <td data-label="Cost" class="text-secondary">RM {{ product.cost_price|floatformat:2 }}</td>
+                        <td data-label="Margin">{% if product.margin_rate is not None %}{{ product.margin_rate|floatformat:1 }}%{% else %}&mdash;{% endif %}</td>
+                        <td data-label="Stock">{{ product.current_stock }}</td>
+                        <td data-label="Stock status">
                             {% if not product.is_active %}
                                 <span class="badge text-bg-secondary">Inactive</span>
                             {% elif product.is_out_of_stock %}
@@ -64,14 +64,14 @@
                                 <span class="badge text-bg-success">In stock</span>
                             {% endif %}
                         </td>
-                        <td class="d-none d-lg-table-cell">
+                        <td data-label="Active status">
                             {% if product.is_active %}
                                 <span class="badge text-bg-success">Active</span>
                             {% else %}
                                 <span class="badge text-bg-secondary">Inactive</span>
                             {% endif %}
                         </td>
-                        <td class="text-end row-actions">
+                        <td class="text-end row-actions" data-label="Actions">
                             <a class="btn btn-sm btn-outline-primary" href="{% url 'products:detail' product.pk %}">View</a>
                             {% if user.is_superuser %}
                                 <a class="btn btn-sm btn-outline-secondary" href="{% url 'products:edit' product.pk %}">Edit</a>
@@ -86,7 +86,7 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td class="text-center text-secondary py-5" colspan="7">No products found.</td>
+                        <td class="text-center text-secondary py-5" colspan="9">No products found.</td>
                     </tr>
                 {% endfor %}
             </tbody>

@@ -186,10 +186,57 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("sale-item-count").textContent = counted;
     };
 
+    // Progressive enhancement over the native select: a plain dropdown is
+    // fine at a handful of Products and unusable at several hundred. The
+    // select itself stays in the DOM, so submitting still works with no
+    // JavaScript and the filter box is never posted.
+    const addProductFilter = (row) => {
+        const select = row.querySelector('select[name$="-product"]');
+        if (!select || select.dataset.filterReady) return;
+        select.dataset.filterReady = "1";
+
+        const allOptions = [...select.options];
+        if (allOptions.length < 8) return;
+
+        const filter = document.createElement("input");
+        filter.type = "search";
+        filter.className = "form-control form-control-sm mb-1";
+        filter.placeholder = "Type to filter products";
+        filter.setAttribute("aria-label", "Filter the product list");
+        filter.setAttribute("aria-controls", select.id);
+        select.parentNode.insertBefore(filter, select);
+
+        filter.addEventListener("input", () => {
+            const query = filter.value.trim().toLowerCase();
+            const chosen = select.value;
+            select.textContent = "";
+            allOptions
+                .filter(
+                    (option) =>
+                        !query
+                        || !option.value
+                        || option.value === chosen
+                        || option.text.toLowerCase().includes(query)
+                )
+                .forEach((option) => select.appendChild(option));
+            // Keep the current choice selected even while it is filtered out,
+            // so typing never silently clears a line the user already picked.
+            if ([...select.options].some((o) => o.value === chosen)) {
+                select.value = chosen;
+            }
+            syncAllRows();
+        });
+    };
+
+    const enhanceAllRows = () => {
+        rows.querySelectorAll(".sale-item-row").forEach(addProductFilter);
+    };
+
     document.getElementById("add-sale-item").addEventListener("click", () => {
         const index = Number(totalForms.value);
         rows.insertAdjacentHTML("beforeend", emptyTemplate.innerHTML.replaceAll("__prefix__", index));
         totalForms.value = index + 1;
+        enhanceAllRows();
         syncAllRows();
     });
 
@@ -206,6 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
     rows.addEventListener("change", syncAllRows);
     rows.addEventListener("input", syncAllRows);
 
+    enhanceAllRows();
     syncAllRows();
 });
 </script>
