@@ -32,28 +32,42 @@
             {% for error in item_formset.non_form_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
             <div id="sale-items" class="vstack gap-3">
                 {% for item_form in item_formset %}
-                    <div class="sale-item-row border rounded p-3">
+                    {% comment %}
+                    The removed state is rendered server-side so it survives a
+                    failed submit even with no JavaScript running.
+                    {% endcomment %}
+                    <div class="sale-item-row border rounded p-3{% if item_form.DELETE.value %} sale-item-removed{% endif %}">
                         <div class="row g-3 align-items-end">
-                            <div class="col-12 col-lg-8">
+                            <div class="col-12 col-lg-6">
                                 <label class="form-label" for="{{ item_form.product.id_for_label }}">Product</label>
                                 {{ item_form.product }}
                                 {% for error in item_form.product.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                             </div>
-                            <div class="col-8 col-lg-2">
+                            <div class="col-6 col-lg-2">
                                 <label class="form-label" for="{{ item_form.quantity.id_for_label }}">Quantity</label>
                                 {{ item_form.quantity }}
                                 {% for error in item_form.quantity.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                                <div class="form-text sale-item-stock-hint"></div>
                             </div>
-                            <div class="col-4 col-lg-2 text-end">
-                                <div class="form-check d-flex justify-content-end align-items-center gap-2 mb-2">
-                                    {{ item_form.DELETE }}
-                                    <label class="form-check-label small text-secondary" for="{{ item_form.DELETE.id_for_label }}">Removed</label>
-                                </div>
-                                <button class="btn btn-outline-danger remove-sale-item" type="button">Remove</button>
+                            <div class="col-6 col-lg-2 text-end">
+                                <span class="form-label d-block">Line total</span>
+                                <strong class="sale-item-subtotal d-block py-2">RM 0.00</strong>
+                            </div>
+                            <div class="col-12 col-lg-2 text-lg-end">
+                                <span class="d-none">{{ item_form.DELETE }}</span>
+                                <span class="badge text-bg-secondary sale-item-removed-badge mb-2">Removed from sale</span>
+                                <button class="btn btn-outline-danger remove-sale-item w-100 w-lg-auto" type="button">Remove</button>
                             </div>
                         </div>
                     </div>
                 {% endfor %}
+            </div>
+            <div class="sale-total-bar d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                <span class="text-secondary"><span id="sale-item-count">0</span> item(s)</span>
+                <div class="text-end">
+                    <span class="d-block small text-secondary">Sale total</span>
+                    <strong class="h3 mb-0" id="sale-grand-total">RM 0.00</strong>
+                </div>
             </div>
         </div>
     </section>
@@ -67,20 +81,23 @@
 <template id="empty-sale-item">
     <div class="sale-item-row border rounded p-3">
         <div class="row g-3 align-items-end">
-            <div class="col-12 col-lg-8">
+            <div class="col-12 col-lg-6">
                 <label class="form-label" for="{{ item_formset.empty_form.product.id_for_label }}">Product</label>
                 {{ item_formset.empty_form.product }}
             </div>
-            <div class="col-8 col-lg-2">
+            <div class="col-6 col-lg-2">
                 <label class="form-label" for="{{ item_formset.empty_form.quantity.id_for_label }}">Quantity</label>
                 {{ item_formset.empty_form.quantity }}
+                <div class="form-text sale-item-stock-hint"></div>
             </div>
-            <div class="col-4 col-lg-2 text-end">
-                <div class="form-check d-flex justify-content-end align-items-center gap-2 mb-2">
-                    {{ item_formset.empty_form.DELETE }}
-                    <label class="form-check-label small text-secondary" for="{{ item_formset.empty_form.DELETE.id_for_label }}">Removed</label>
-                </div>
-                <button class="btn btn-outline-danger remove-sale-item" type="button">Remove</button>
+            <div class="col-6 col-lg-2 text-end">
+                <span class="form-label d-block">Line total</span>
+                <strong class="sale-item-subtotal d-block py-2">RM 0.00</strong>
+            </div>
+            <div class="col-12 col-lg-2 text-lg-end">
+                <span class="d-none">{{ item_formset.empty_form.DELETE }}</span>
+                <span class="badge text-bg-secondary sale-item-removed-badge mb-2">Removed from sale</span>
+                <button class="btn btn-outline-danger remove-sale-item w-100 w-lg-auto" type="button">Remove</button>
             </div>
         </div>
     </div>
@@ -92,12 +109,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const totalForms = document.getElementById("id_items-TOTAL_FORMS");
     const emptyTemplate = document.getElementById("empty-sale-item");
 
+    const money = (value) =>
+        "RM " + value.toLocaleString("en-MY", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+
     // The server re-renders the checkbox state after a failed submit, so the
     // row styling is always derived from the checkbox rather than tracked
     // separately. Otherwise a removed row can come back looking active.
     const syncRow = (row) => {
         const deleteInput = row.querySelector('input[name$="-DELETE"]');
-        if (!deleteInput) return;
+        if (!deleteInput) return 0;
         const removed = deleteInput.checked;
         row.classList.toggle("sale-item-removed", removed);
         const button = row.querySelector(".remove-sale-item");
@@ -106,17 +129,68 @@ document.addEventListener("DOMContentLoaded", () => {
             button.classList.toggle("btn-outline-danger", !removed);
             button.classList.toggle("btn-outline-secondary", removed);
         }
+
+        const select = row.querySelector('select[name$="-product"]');
+        const qtyInput = row.querySelector('input[name$="-quantity"]');
+        const subtotalEl = row.querySelector(".sale-item-subtotal");
+        const hintEl = row.querySelector(".sale-item-stock-hint");
+        const chosen = select && select.selectedIndex >= 0
+            ? select.options[select.selectedIndex]
+            : null;
+        const price = chosen ? parseFloat(chosen.dataset.price || "0") : 0;
+        const stock = chosen && chosen.dataset.stock !== undefined
+            ? parseInt(chosen.dataset.stock, 10)
+            : null;
+        const qty = qtyInput ? parseInt(qtyInput.value, 10) : NaN;
+
+        // Cap the native control at what can actually be sold, instead of
+        // leaving the field's max at the integer ceiling.
+        if (qtyInput) {
+            if (stock !== null && stock > 0) {
+                qtyInput.max = stock;
+            } else {
+                qtyInput.removeAttribute("max");
+            }
+        }
+        if (hintEl) {
+            let hint = "";
+            if (stock !== null && Number.isFinite(qty) && qty > stock) {
+                hint = `Only ${stock} available`;
+            } else if (stock !== null && price) {
+                hint = `${stock} available`;
+            }
+            hintEl.textContent = hint;
+            hintEl.classList.toggle(
+                "text-danger",
+                stock !== null && Number.isFinite(qty) && qty > stock
+            );
+        }
+
+        const lineTotal =
+            !removed && price && Number.isFinite(qty) && qty > 0 ? price * qty : 0;
+        if (subtotalEl) subtotalEl.textContent = money(lineTotal);
+        return lineTotal;
     };
 
+    // A cashier has to be able to read the price back to the customer before
+    // submitting, so the running total is recomputed on every change.
     const syncAllRows = () => {
-        rows.querySelectorAll(".sale-item-row").forEach(syncRow);
+        let total = 0;
+        let counted = 0;
+        rows.querySelectorAll(".sale-item-row").forEach((row) => {
+            const lineTotal = syncRow(row);
+            total += lineTotal;
+            if (lineTotal > 0) counted += 1;
+        });
+        document.getElementById("sale-grand-total").textContent = money(total);
+        document.getElementById("sale-item-count").textContent = counted;
     };
 
     document.getElementById("add-sale-item").addEventListener("click", () => {
         const index = Number(totalForms.value);
         rows.insertAdjacentHTML("beforeend", emptyTemplate.innerHTML.replaceAll("__prefix__", index));
         totalForms.value = index + 1;
-        syncRow(rows.lastElementChild);
+        syncAllRows();
     });
 
     rows.addEventListener("click", (event) => {
@@ -125,14 +199,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const deleteInput = row.querySelector('input[name$="-DELETE"]');
         if (deleteInput) {
             deleteInput.checked = !deleteInput.checked;
-            syncRow(row);
+            syncAllRows();
         }
     });
 
-    rows.addEventListener("change", (event) => {
-        if (!event.target.matches('input[name$="-DELETE"]')) return;
-        syncRow(event.target.closest(".sale-item-row"));
-    });
+    rows.addEventListener("change", syncAllRows);
+    rows.addEventListener("input", syncAllRows);
 
     syncAllRows();
 });

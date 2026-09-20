@@ -42,6 +42,8 @@
                     <th scope="col">SKU</th>
                     <th scope="col">Name</th>
                     <th scope="col">Selling price</th>
+                    <th scope="col">Cost</th>
+                    <th scope="col">Margin</th>
                     <th scope="col">Stock</th>
                     <th scope="col">Stock status</th>
                     <th scope="col">Active status</th>
@@ -54,6 +56,8 @@
                         <td class="fw-semibold">{{ product.sku }}</td>
                         <td>{{ product.name }}</td>
                         <td>RM {{ product.selling_price|floatformat:2 }}</td>
+                        <td class="text-secondary">RM {{ product.cost_price|floatformat:2 }}</td>
+                        <td>{% if product.margin_rate is not None %}{{ product.margin_rate|floatformat:1 }}%{% else %}&mdash;{% endif %}</td>
                         <td>{{ product.current_stock }}</td>
                         <td>
                             {% if not product.is_active %}
@@ -80,7 +84,7 @@
                                 {% if product.is_active %}
                                     <form class="d-inline" method="post" action="{% url 'products:deactivate' product.pk %}">
                                         {% csrf_token %}
-                                        <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Deactivate this product?');">Deactivate</button>
+                                        <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Deactivate “{{ product.name|escapejs }}”? It will no longer appear in new Sales.');">Deactivate</button>
                                     </form>
                                 {% endif %}
                             {% endif %}

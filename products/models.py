@@ -71,6 +71,22 @@ class Product(models.Model):
         return super().save(*args, **kwargs)
 
     @property
+    def margin_rate(self):
+        """Current gross margin percentage, or None when it cannot be read.
+
+        This is the margin the Product would earn if sold today. Margin
+        actually earned on past Sales comes from each SaleItem's own cost
+        snapshot, not from here.
+        """
+        if not self.selling_price:
+            return None
+        return (
+            (self.selling_price - self.cost_price)
+            * Decimal("100.00")
+            / self.selling_price
+        ).quantize(Decimal("0.1"))
+
+    @property
     def is_low_stock(self):
         return (
             self.is_active

@@ -87,7 +87,10 @@ def create_sale(*, customer_id, items, created_by):
         if not product.is_active:
             raise SalesOperationError("Product is not available")
         if quantity > product.current_stock:
-            raise SalesOperationError(f"Insufficient stock for {product.sku}")
+            raise SalesOperationError(
+                f"Only {product.current_stock} left of {product.name} "
+                f"({product.sku}), but {quantity} were requested."
+            )
 
         subtotal = product.selling_price * quantity
         prepared_items.append(
