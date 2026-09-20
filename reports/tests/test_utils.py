@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.utils import timezone
@@ -15,7 +15,18 @@ def local_datetime(year, month, day, hour=12, minute=0):
     )
 
 
-def create_sale(*, user, at, customer=None, items=()):
+def days_ago(days, hour=12, minute=0):
+    """A local datetime relative to today.
+
+    Reporting periods roll forward every day, so fixtures must be anchored to
+    the current date. A hard-coded calendar date silently falls outside the
+    window once enough time passes and takes the assertions with it.
+    """
+    day = timezone.localdate() - timedelta(days=days)
+    return local_datetime(day.year, day.month, day.day, hour, minute)
+
+
+def create_sale(*, user, at, customer=None, items=(), record_cost=True):
     total = sum(
         (Decimal(str(unit_price)) * quantity for _, quantity, unit_price in items),
         start=Decimal("0.00"),
@@ -51,6 +62,10 @@ def create_sale(*, user, at, customer=None, items=()):
             quantity=quantity,
             unit_price=unit_price,
             subtotal=unit_price * quantity,
+            unit_cost=product.cost_price if record_cost else None,
+            cost_subtotal=(
+                product.cost_price * quantity if record_cost else None
+            ),
         )
     return sale
 

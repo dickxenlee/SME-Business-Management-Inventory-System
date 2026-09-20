@@ -53,6 +53,10 @@ print(json.dumps({
     "csrf_secure": settings.CSRF_COOKIE_SECURE,
     "ssl_redirect": settings.SECURE_SSL_REDIRECT,
     "redirect_exempt": settings.SECURE_REDIRECT_EXEMPT,
+    "axes_enabled": settings.AXES_ENABLED,
+    "axes_failure_limit": settings.AXES_FAILURE_LIMIT,
+    "axes_lockout_parameters": settings.AXES_LOCKOUT_PARAMETERS,
+    "axes_ip_precedence": settings.AXES_IPWARE_META_PRECEDENCE_ORDER,
     "hsts_seconds": settings.SECURE_HSTS_SECONDS,
     "hsts_subdomains": settings.SECURE_HSTS_INCLUDE_SUBDOMAINS,
     "hsts_preload": settings.SECURE_HSTS_PRELOAD,
@@ -138,6 +142,37 @@ print(json.dumps({
         self.assertEqual(
             json.loads(result.stdout)["redirect_exempt"],
             ["^health/$"],
+        )
+
+    def test_login_lockout_is_enabled_and_scoped_to_username_and_address(self):
+        result = self.run_settings_probe()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertIs(data["axes_enabled"], True)
+        self.assertEqual(data["axes_failure_limit"], 5)
+        self.assertEqual(
+            data["axes_lockout_parameters"], [["username", "ip_address"]]
+        )
+
+    def test_forwarded_client_ip_is_only_trusted_behind_a_trusted_proxy(self):
+        untrusted = json.loads(
+            self.run_settings_probe(
+                DJANGO_TRUST_PROXY_SSL_HEADER="False"
+            ).stdout
+        )
+        trusted = json.loads(
+            self.run_settings_probe(
+                DJANGO_TRUST_PROXY_SSL_HEADER="True"
+            ).stdout
+        )
+
+        # Reading a spoofable header without a trusted proxy in front would let
+        # an attacker sidestep the lockout by forging X-Forwarded-For.
+        self.assertEqual(untrusted["axes_ip_precedence"], ["REMOTE_ADDR"])
+        self.assertEqual(
+            trusted["axes_ip_precedence"],
+            ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"],
         )
 
     def test_hsts_seconds_are_environment_controlled(self):

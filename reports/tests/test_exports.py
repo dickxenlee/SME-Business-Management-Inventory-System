@@ -58,7 +58,7 @@ class ReportExportTests(TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[1][0], sale.sale_number)
         self.assertEqual(rows[1][4], "12.50")
-        self.assertEqual(rows[1][5], sale.invoice.invoice_number)
+        self.assertEqual(rows[1][7], sale.invoice.invoice_number)
 
     def test_sales_csv_sanitizes_customer_and_username_formula_prefixes(self):
         sale = create_sale(
@@ -72,7 +72,7 @@ class ReportExportTests(TestCase):
         row = self.rows(self.client.get(reverse("reports:sales_csv"), {"period": "today"}))[1]
 
         self.assertEqual(row[2], "'=SUM(A1:A2)")
-        self.assertEqual(row[6], "'@staff-export")
+        self.assertEqual(row[8], "'@staff-export")
 
     def test_inventory_csv_sanitizes_text_without_corrupting_numeric_cells(self):
         movement = StockMovement.objects.create(
@@ -142,3 +142,60 @@ class ReportExportTests(TestCase):
 
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[1][4], "10.00")
+
+
+@override_settings(TIME_ZONE="Asia/Kuala_Lumpur", USE_TZ=True)
+class SalesCsvMarginColumnTests(TestCase):
+    """Cost and profit columns must never imply a margin that isn't known."""
+
+    @classmethod
+    def setUpTestData(cls):
+        group, _ = Group.objects.get_or_create(name="Staff")
+        cls.staff = get_user_model().objects.create_user(username="margin-export")
+        cls.staff.groups.add(group)
+        cls.product = Product.objects.create(
+            sku="MARGIN-CSV", name="Margin CSV Product",
+            selling_price=Decimal("12.50"), cost_price=Decimal("5.00"),
+            current_stock=10,
+        )
+
+    def rows(self, response):
+        body = b"".join(response.streaming_content).decode("utf-8")
+        return list(csv.reader(StringIO(body)))
+
+    def today_at(self, hour=12, minute=0):
+        today = timezone.localdate()
+        return local_datetime(today.year, today.month, today.day, hour, minute)
+
+    def test_costed_sale_exports_cost_and_gross_profit(self):
+        create_sale(
+            user=self.staff, at=self.today_at(),
+            items=[(self.product, 2, "12.50")],
+        )
+        self.client.force_login(self.staff)
+
+        row = self.rows(
+            self.client.get(reverse("reports:sales_csv"), {"period": "today"})
+        )[1]
+
+        self.assertEqual(row[4], "25.00")
+        self.assertEqual(row[5], f"{self.product.cost_price * 2:.2f}")
+        self.assertEqual(
+            row[6], f"{Decimal('25.00') - self.product.cost_price * 2:.2f}"
+        )
+
+    def test_uncosted_sale_leaves_cost_and_profit_blank(self):
+        create_sale(
+            user=self.staff, at=self.today_at(),
+            items=[(self.product, 2, "12.50")],
+            record_cost=False,
+        )
+        self.client.force_login(self.staff)
+
+        row = self.rows(
+            self.client.get(reverse("reports:sales_csv"), {"period": "today"})
+        )[1]
+
+        self.assertEqual(row[4], "25.00")
+        self.assertEqual(row[5], "")
+        self.assertEqual(row[6], "")

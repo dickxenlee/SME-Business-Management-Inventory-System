@@ -1,0 +1,10 @@
+{% extends "errors/base_error.html" %}
+
+{% block title %}Too many sign-in attempts{% endblock %}
+{% block code %}HTTP 429{% endblock %}
+
+{% block content %}
+<h1>Too many sign-in attempts</h1>
+<p class="text-secondary">This account has been temporarily locked after repeated failed sign-in attempts. Please wait and try again, or contact your administrator if you need access sooner.</p>
+<a class="btn btn-outline-primary" href="{% url 'core:login' %}">Back to sign in</a>
+{% endblock %}

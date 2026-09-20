@@ -113,6 +113,37 @@ def _sales_summary(period):
     )
 
 
+def _margin_metrics(item_queryset):
+    """Gross margin over the SaleItems that carry a cost snapshot.
+
+    SaleItems recorded before cost capture existed have no unit_cost, so they
+    are excluded from cost and profit and reported separately as uncosted
+    rather than being guessed from the Product's current cost_price.
+    """
+    costed = item_queryset.filter(unit_cost__isnull=False)
+    totals = costed.aggregate(
+        cost=Coalesce(Sum("cost_subtotal"), ZERO_MONEY),
+        costed_revenue=Coalesce(Sum("subtotal"), ZERO_MONEY),
+        costed_items=Count("pk"),
+    )
+    uncosted_items = item_queryset.filter(unit_cost__isnull=True).count()
+    gross_profit = totals["costed_revenue"] - totals["cost"]
+    margin_rate = None
+    if totals["costed_revenue"]:
+        margin_rate = (
+            gross_profit * Decimal("100.00") / totals["costed_revenue"]
+        ).quantize(Decimal("0.01"))
+    return {
+        "cost": totals["cost"],
+        "costed_revenue": totals["costed_revenue"],
+        "gross_profit": gross_profit,
+        "margin_rate": margin_rate,
+        "costed_items": totals["costed_items"],
+        "uncosted_items": uncosted_items,
+        "cost_is_complete": uncosted_items == 0,
+    }
+
+
 def get_sales_report(period):
     """Return selected-period Sales metrics from immutable Sale data."""
     summary = _sales_summary(period)
@@ -130,6 +161,7 @@ def get_sales_report(period):
     )
     return {
         **summary,
+        "margin": _margin_metrics(item_queryset),
         "daily_revenue": _daily_revenue(period),
         "top_products_by_revenue": list(
             top_base.order_by("-revenue", "product_id")[:5]
@@ -284,6 +316,12 @@ def get_dashboard_data(period, user):
         "sale_count": sales["sale_count"],
         "average_sale": sales["average_sale"],
         "invoice_rate": invoice_rate,
+        "margin": _margin_metrics(
+            SaleItem.objects.filter(
+                sale__created_at__gte=period.start_at,
+                sale__created_at__lt=period.end_at,
+            )
+        ),
         "active_customers": Customer.objects.filter(is_active=True).count(),
         "inventory": _inventory_health(),
         "attention_products": attention_products,

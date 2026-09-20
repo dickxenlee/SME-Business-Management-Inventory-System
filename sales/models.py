@@ -75,6 +75,23 @@ class SaleItem(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.00"))],
     )
+    # Cost is snapshotted like price so historical margin survives later
+    # Product repricing. Null on SaleItems recorded before cost capture
+    # existed; those Sales are reported as cost-unknown rather than guessed.
+    unit_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    cost_subtotal = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
 
     class Meta:
         ordering = ["pk"]
@@ -82,6 +99,25 @@ class SaleItem(models.Model):
             models.CheckConstraint(
                 condition=models.Q(quantity__gt=0),
                 name="sale_item_quantity_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(unit_cost__isnull=True)
+                | models.Q(unit_cost__gte=0),
+                name="sale_item_unit_cost_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(cost_subtotal__isnull=True)
+                | models.Q(cost_subtotal__gte=0),
+                name="sale_item_cost_subtotal_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    unit_cost__isnull=True, cost_subtotal__isnull=True
+                )
+                | models.Q(
+                    unit_cost__isnull=False, cost_subtotal__isnull=False
+                ),
+                name="sale_item_cost_snapshot_complete",
             ),
             models.CheckConstraint(
                 condition=models.Q(unit_price__gte=0),
