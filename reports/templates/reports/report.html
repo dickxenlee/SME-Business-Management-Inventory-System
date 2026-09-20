@@ -32,11 +32,9 @@
         <div class="col-6 col-lg-3"><div class="metric-tile"><span>Sales</span><strong>{{ sales_report.sale_count }}</strong></div></div>
         <div class="col-6 col-lg-3"><div class="metric-tile"><span>Average Sale</span><strong>MYR {{ sales_report.average_sale|floatformat:2 }}</strong></div></div>
         <div class="col-6 col-lg-3"><div class="metric-tile"><span>Walk-in Sales</span><strong>{{ sales_report.walk_in_count }}</strong></div></div>
-    </div>
-    <div class="row g-3 mt-1">
-        <div class="col-6 col-lg-4"><div class="metric-tile"><span>Cost of goods sold</span><strong>MYR {{ sales_report.margin.cost|floatformat:2 }}</strong></div></div>
-        <div class="col-6 col-lg-4"><div class="metric-tile"><span>Gross profit</span><strong>MYR {{ sales_report.margin.gross_profit|floatformat:2 }}</strong></div></div>
-        <div class="col-6 col-lg-4"><div class="metric-tile"><span>Gross margin</span><strong>{% if sales_report.margin.margin_rate is not None %}{{ sales_report.margin.margin_rate|floatformat:2 }}%{% else %}—{% endif %}</strong></div></div>
+        <div class="col-6 col-lg-3"><div class="metric-tile"><span>Cost of goods sold</span><strong>MYR {{ sales_report.margin.cost|floatformat:2 }}</strong></div></div>
+        <div class="col-6 col-lg-3"><div class="metric-tile"><span>Gross profit</span><strong>MYR {{ sales_report.margin.gross_profit|floatformat:2 }}</strong></div></div>
+        <div class="col-6 col-lg-3"><div class="metric-tile"><span>Gross margin</span><strong>{% if sales_report.margin.margin_rate is not None %}{{ sales_report.margin.margin_rate|floatformat:2 }}%{% else %}—{% endif %}</strong></div></div>
     </div>
     <p class="small text-secondary mt-2 mb-0">
         {% if sales_report.margin.cost_is_complete %}

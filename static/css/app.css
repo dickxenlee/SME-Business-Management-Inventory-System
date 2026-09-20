@@ -465,3 +465,25 @@ body {
 .skip-link:focus {
     left: 0;
 }
+
+/* Row actions sit side by side on wide screens. On a phone three inline
+   buttons push the column past the viewport, so stack them instead. */
+.row-actions {
+    white-space: nowrap;
+}
+
+@media (max-width: 991.98px) {
+    .row-actions {
+        white-space: normal;
+    }
+
+    .row-actions .btn,
+    .row-actions form {
+        display: block;
+    }
+
+    .row-actions .btn + .btn,
+    .row-actions form {
+        margin-top: 0.25rem;
+    }
+}

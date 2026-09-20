@@ -8,14 +8,6 @@
     <button class="btn btn-primary align-self-start" type="button" onclick="window.print()">Print invoice</button>
 </div>
 
-{% if messages %}
-    <div class="messages screen-only">
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
-        {% endfor %}
-    </div>
-{% endif %}
-
 <article class="invoice-document bg-white shadow-sm" aria-labelledby="invoice-heading">
     <header class="invoice-header">
         <div class="invoice-seller">

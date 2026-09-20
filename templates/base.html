@@ -67,6 +67,16 @@
     </nav>
 
     <main class="container py-4" id="main-content" tabindex="-1">
+        {% if messages %}
+            <div class="messages screen-only" aria-live="polite">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} d-flex align-items-start gap-2" role="alert">
+                        <span class="flex-grow-1">{{ message }}</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 

@@ -133,7 +133,9 @@ class BaseSaleItemFormSet(BaseFormSet):
 SaleItemFormSet = formset_factory(
     SaleItemForm,
     formset=BaseSaleItemFormSet,
-    extra=1,
+    # min_num already renders one blank line; a second empty row just looks
+    # like something the user forgot to fill in. More are added on demand.
+    extra=0,
     can_delete=True,
     min_num=1,
     validate_min=True,

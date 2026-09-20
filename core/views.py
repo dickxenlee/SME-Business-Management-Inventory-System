@@ -42,7 +42,12 @@ def home(request):
     period = resolve_period(request.GET.get("period"))
     dashboard = get_dashboard_data(period, request.user)
     dashboard["revenue_chart"] = {
-        "labels": [row["date"].isoformat() for row in dashboard["daily_revenue"]],
+        # "21 Sep" reads on a crowded axis; an ISO date does not. Built from
+        # parts rather than strftime, whose no-pad flag is platform specific.
+        "labels": [
+            f"{row['date'].day} {row['date']:%b}"
+            for row in dashboard["daily_revenue"]
+        ],
         "values": [float(row["revenue"]) for row in dashboard["daily_revenue"]],
     }
     return render(

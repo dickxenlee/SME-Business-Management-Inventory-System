@@ -22,12 +22,6 @@
     </div>
 </div>
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
-    {% endfor %}
-{% endif %}
-
 <section class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
         <dl class="row mb-0">

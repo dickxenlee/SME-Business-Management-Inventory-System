@@ -11,12 +11,6 @@
     <a class="btn btn-primary" href="{% url 'customers:create' %}">Create customer</a>
 </div>
 
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
-    {% endfor %}
-{% endif %}
-
 <form class="card card-body border-0 shadow-sm mb-4" method="get">
     <div class="row g-2 align-items-end">
         <div class="col-12 col-md">
@@ -57,7 +51,7 @@
                                 <span class="badge text-bg-secondary">Inactive</span>
                             {% endif %}
                         </td>
-                        <td class="text-end text-nowrap">
+                        <td class="text-end row-actions">
                             <a class="btn btn-sm btn-outline-primary" href="{% url 'customers:detail' customer.pk %}">View</a>
                             <a class="btn btn-sm btn-outline-secondary" href="{% url 'customers:edit' customer.pk %}">Edit</a>
                             {% if user.is_superuser and customer.is_active %}
