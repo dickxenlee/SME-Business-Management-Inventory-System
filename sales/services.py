@@ -96,6 +96,10 @@ def create_sale(*, customer_id, items, created_by):
                 "quantity": quantity,
                 "unit_price": product.selling_price,
                 "subtotal": subtotal,
+                # Snapshotted alongside price so margin on this Sale stays
+                # correct after the Product is later repriced.
+                "unit_cost": product.cost_price,
+                "cost_subtotal": product.cost_price * quantity,
             }
         )
         total_amount += subtotal
@@ -131,6 +135,8 @@ def create_sale(*, customer_id, items, created_by):
             quantity=item["quantity"],
             unit_price=item["unit_price"],
             subtotal=item["subtotal"],
+            unit_cost=item["unit_cost"],
+            cost_subtotal=item["cost_subtotal"],
         )
 
     return sale

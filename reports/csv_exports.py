@@ -2,7 +2,7 @@
 
 import csv
 
-from django.db.models import Count
+from django.db.models import Count, Q, Sum
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 
@@ -48,19 +48,32 @@ def sales_csv_response(period):
             created_at__lt=period.end_at,
         )
         .select_related("created_by", "invoice")
-        .annotate(item_count=Count("items"))
+        .annotate(
+            item_count=Count("items", distinct=True),
+            # Blank rather than zero when any line predates cost capture, so a
+            # partial cost snapshot is never read as a full-margin Sale.
+            cost_total=Sum("items__cost_subtotal"),
+            uncosted_items=Count(
+                "items", filter=Q(items__unit_cost__isnull=True), distinct=True
+            ),
+        )
         .order_by("-created_at", "-pk")
     )
 
     def rows():
         for sale in queryset.iterator(chunk_size=500):
             invoice = getattr(sale, "invoice", None)
+            known_cost = sale.cost_total if not sale.uncosted_items else None
             yield (
                 sale.sale_number,
                 _local_timestamp(sale.created_at),
                 safe_text(sale.customer_name or "Walk-in Customer"),
                 sale.item_count,
                 f"{sale.total_amount:.2f}",
+                f"{known_cost:.2f}" if known_cost is not None else "",
+                f"{sale.total_amount - known_cost:.2f}"
+                if known_cost is not None
+                else "",
                 invoice.invoice_number if invoice else "",
                 safe_text(sale.created_by.username if sale.created_by else ""),
             )
@@ -69,7 +82,7 @@ def sales_csv_response(period):
         rows=rows(),
         header=(
             "Sale number", "Date/time", "Customer", "Item count", "Total (MYR)",
-            "Invoice number", "Created by",
+            "Cost (MYR)", "Gross profit (MYR)", "Invoice number", "Created by",
         ),
         filename=f"sales-{period.end_date.isoformat()}.csv",
     )

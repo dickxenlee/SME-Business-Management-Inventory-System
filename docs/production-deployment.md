@@ -33,6 +33,9 @@ Set these in the hosting platform's secret-variable interface. Never commit real
 | `DJANGO_TRUST_PROXY_SSL_HEADER` | Keep `False` until the platform is confirmed to overwrite `X-Forwarded-Proto`; then set `True` |
 | `DJANGO_SECURE_HSTS_SECONDS` | Start at `0`; use `3600` only after HTTPS verification, then consider a longer value after stable operation |
 | `DJANGO_LOG_LEVEL` | Normally `INFO` |
+| `DJANGO_AXES_ENABLED` | Keep `True`; only set `False` to diagnose a lockout problem |
+| `DJANGO_AXES_FAILURE_LIMIT` | Failed sign-ins before lockout, normally `5` |
+| `DJANGO_AXES_COOLOFF_MINUTES` | Lockout duration in minutes, normally `15` |
 | `DB_NAME` | PostgreSQL database name |
 | `DB_USER` | Least-privileged application role |
 | `DB_PASSWORD` | Private database password |

@@ -15,7 +15,7 @@ This is a portfolio and staging implementation. It does not claim commercial pro
 - Transactional Stock In, Stock Out, and Adjustment workflows with an auditable movement chain
 - Atomic multi-item Sales with stock validation, rollback, and immutable historical snapshots
 - One immutable Invoice per completed Sale with print-friendly browser output
-- Dashboard and Reports for revenue, Sales, inventory health, Customers, and Invoice coverage
+- Dashboard and Reports for revenue, gross margin, Sales, inventory health, Customers, and Invoice coverage
 - Secure CSV exports for Sales and Inventory Movements
 - PostgreSQL-backed automated tests, GitHub Actions CI, health checks, and recovery documentation
 
@@ -72,6 +72,7 @@ Completed Sales and issued Invoices are immutable. SaleItems snapshot Product SK
 - Normal Staff users remain outside Django admin.
 - Destructive state changes use POST and CSRF protection; normal business records use soft deactivation.
 - Production settings enforce secure cookies, HTTPS-aware configuration, explicit hosts/origins, and PostgreSQL TLS.
+- The login form is rate limited: repeated failures lock the username/address pair for a cool-off period, recorded in PostgreSQL so the limit holds across Gunicorn workers.
 - CSV exports neutralize user-controlled values that could be interpreted as spreadsheet formulas.
 
 ### Reporting
@@ -80,7 +81,7 @@ Dashboard and Reports support Today, the last 7 days, and the last 30 days using
 
 ## Testing and CI
 
-The project has **337 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, reporting, CSV security, production settings, and health checks.
+The project has **358 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, gross-margin reporting, login lockout, CSV security, production settings, and health checks.
 
 GitHub Actions runs the suite against a real PostgreSQL service and separately validates the production configuration. Local verification uses the same checks:
 

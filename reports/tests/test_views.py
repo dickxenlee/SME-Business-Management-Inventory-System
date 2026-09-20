@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from products.models import Product
 
-from .test_utils import create_invoice, create_sale, local_datetime
+from .test_utils import create_invoice, create_sale, days_ago
 
 
 @override_settings(TIME_ZONE="Asia/Kuala_Lumpur", USE_TZ=True)
@@ -28,7 +28,7 @@ class ReportsViewTests(TestCase):
 
     def test_dashboard_renders_kpis_tables_and_safe_chart_payload(self):
         create_sale(
-            user=self.user, at=local_datetime(2026, 8, 14),
+            user=self.user, at=days_ago(3),
             items=[(self.product, 1, "25.00")],
         )
 
@@ -51,11 +51,11 @@ class ReportsViewTests(TestCase):
 
     def test_reports_page_renders_all_four_business_sections_and_exports(self):
         sale = create_sale(
-            user=self.user, at=local_datetime(2026, 8, 14),
+            user=self.user, at=days_ago(3),
             items=[(self.product, 1, "25.00")],
         )
         invoice = create_invoice(
-            sale=sale, user=self.user, at=local_datetime(2026, 8, 14)
+            sale=sale, user=self.user, at=days_ago(3)
         )
         response = self.client.get(reverse("reports:index"))
 

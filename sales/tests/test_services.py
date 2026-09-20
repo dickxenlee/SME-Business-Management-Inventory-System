@@ -187,3 +187,48 @@ class CreateSaleServiceTests(TestCase):
         for operation, message in operations:
             with self.subTest(message=message):
                 self.assert_rejected_without_changes(operation, message)
+
+
+class SaleCostSnapshotTests(TestCase):
+    """create_sale must capture cost so margin survives later repricing."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = get_user_model().objects.create_user(username="cost-snapshot")
+
+    def setUp(self):
+        self.product = Product.objects.create(
+            sku="COST-1",
+            name="Cost Product",
+            selling_price=Decimal("25.00"),
+            cost_price=Decimal("10.00"),
+            current_stock=50,
+        )
+
+    def test_cost_is_snapshotted_on_each_sale_item(self):
+        sale = create_sale(
+            customer_id=None,
+            items=[{"product_id": self.product.pk, "quantity": 3}],
+            created_by=self.user,
+        )
+        item = sale.items.get()
+
+        self.assertEqual(item.unit_cost, Decimal("10.00"))
+        self.assertEqual(item.cost_subtotal, Decimal("30.00"))
+        self.assertEqual(item.unit_price, Decimal("25.00"))
+        self.assertEqual(item.subtotal, Decimal("75.00"))
+
+    def test_snapshotted_cost_is_unaffected_by_later_repricing(self):
+        sale = create_sale(
+            customer_id=None,
+            items=[{"product_id": self.product.pk, "quantity": 3}],
+            created_by=self.user,
+        )
+
+        self.product.cost_price = Decimal("99.00")
+        self.product.save(update_fields=["cost_price", "updated_at"])
+        item = sale.items.get()
+        item.refresh_from_db()
+
+        self.assertEqual(item.unit_cost, Decimal("10.00"))
+        self.assertEqual(item.cost_subtotal, Decimal("30.00"))

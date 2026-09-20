@@ -1,6 +1,7 @@
 """Django settings for the SME Manager project."""
 
 import os
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -127,6 +128,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "axes",
     "core.apps.CoreConfig",
     "products.apps.ProductsConfig",
     "inventory.apps.InventoryConfig",
@@ -145,6 +147,16 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Must follow AuthenticationMiddleware; it attaches the request that the
+    # Axes backend needs to attribute a failed login.
+    "axes.middleware.AxesMiddleware",
+]
+
+AUTHENTICATION_BACKENDS = [
+    # Axes must come first so a locked-out attempt is refused before the
+    # credentials are ever checked.
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
 ]
 
 ROOT_URLCONF = "sme_manager.urls"
@@ -253,10 +265,39 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 
-if env_bool("DJANGO_TRUST_PROXY_SSL_HEADER", default=False):
+TRUST_PROXY_SSL_HEADER = env_bool("DJANGO_TRUST_PROXY_SSL_HEADER", default=False)
+if TRUST_PROXY_SSL_HEADER:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 CSRF_FAILURE_VIEW = "core.views.csrf_failure"
+
+# Brute-force protection for the login form. Attempts are stored in
+# PostgreSQL rather than the local-memory cache, so the limit holds across
+# Gunicorn workers without needing a separate cache service.
+AXES_ENABLED = env_bool("DJANGO_AXES_ENABLED", default=True)
+AXES_FAILURE_LIMIT = env_int("DJANGO_AXES_FAILURE_LIMIT", 5, minimum=1)
+AXES_COOLOFF_TIME = timedelta(
+    minutes=env_int("DJANGO_AXES_COOLOFF_MINUTES", 15, minimum=1)
+)
+# Lock the username/IP pair, not the username alone: locking by username lets
+# anyone lock a known user out of their own account from anywhere.
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_RESET_ON_SUCCESS = True
+# Never write submitted credentials to the access log.
+AXES_SENSITIVE_PARAMETERS = ["username", "password"]
+AXES_LOCKOUT_TEMPLATE = "429_lockout.html"
+AXES_VERBOSE = False
+# Behind a trusted proxy REMOTE_ADDR is the proxy itself, which would put every
+# attacker in one bucket and let a single attacker lock out the whole site.
+# Read the forwarded client address instead, but only when the proxy is trusted
+# to overwrite it -- otherwise a client could spoof the header to dodge the
+# lockout entirely.
+if TRUST_PROXY_SSL_HEADER:
+    AXES_IPWARE_PROXY_COUNT = 1
+    AXES_IPWARE_META_PRECEDENCE_ORDER = ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"]
+else:
+    AXES_IPWARE_PROXY_COUNT = None
+    AXES_IPWARE_META_PRECEDENCE_ORDER = ["REMOTE_ADDR"]
 
 LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO").strip().upper()
 valid_log_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}

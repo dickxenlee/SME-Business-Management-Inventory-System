@@ -24,10 +24,14 @@
         <div><p class="report-eyebrow mb-1">Selected period</p><h2 class="h4 mb-0" id="period-kpis-heading">Sales signal</h2></div>
     </div>
     <div class="row g-3">
-        <div class="col-md-4"><div class="kpi-card"><span>Sales revenue</span><strong>MYR {{ dashboard.revenue|floatformat:2 }}</strong><small>{{ period.label }}</small></div></div>
-        <div class="col-md-4"><div class="kpi-card"><span>Sales count</span><strong>{{ dashboard.sale_count }}</strong><small>Completed Sales</small></div></div>
-        <div class="col-md-4"><div class="kpi-card"><span>Average Sale value</span><strong>MYR {{ dashboard.average_sale|floatformat:2 }}</strong><small>Revenue per Sale</small></div></div>
+        <div class="col-md-3"><div class="kpi-card"><span>Sales revenue</span><strong>MYR {{ dashboard.revenue|floatformat:2 }}</strong><small>{{ period.label }}</small></div></div>
+        <div class="col-md-3"><div class="kpi-card"><span>Gross profit</span><strong>MYR {{ dashboard.margin.gross_profit|floatformat:2 }}</strong><small>{% if dashboard.margin.margin_rate is not None %}{{ dashboard.margin.margin_rate|floatformat:2 }}% margin{% else %}No costed Sales yet{% endif %}</small></div></div>
+        <div class="col-md-3"><div class="kpi-card"><span>Sales count</span><strong>{{ dashboard.sale_count }}</strong><small>Completed Sales</small></div></div>
+        <div class="col-md-3"><div class="kpi-card"><span>Average Sale value</span><strong>MYR {{ dashboard.average_sale|floatformat:2 }}</strong><small>Revenue per Sale</small></div></div>
     </div>
+    {% if not dashboard.margin.cost_is_complete %}
+        <p class="small text-secondary mt-2 mb-0">Gross profit covers the {{ dashboard.margin.costed_items }} Sale line{{ dashboard.margin.costed_items|pluralize }} with a recorded cost; {{ dashboard.margin.uncosted_items }} line{{ dashboard.margin.uncosted_items|pluralize }} predate cost capture and are excluded rather than estimated.</p>
+    {% endif %}
 </section>
 
 <section class="row g-3 mb-4" aria-labelledby="current-kpis-heading">
