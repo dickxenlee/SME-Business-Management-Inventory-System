@@ -32,6 +32,7 @@ class InvoicePermissionTests(TestCase):
         cls.sale = Sale.objects.create(
             customer_name="Permission Customer",
             customer_address="Permission Address",
+            net_amount=Decimal("10.00"),
             total_amount=Decimal("10.00"),
             created_by=cls.admin_user,
         )
@@ -41,6 +42,7 @@ class InvoicePermissionTests(TestCase):
             customer_address=cls.sale.customer_address,
             seller_name="Permission SME",
             seller_address="Permission Address",
+            net_amount=cls.sale.total_amount,
             total_amount=cls.sale.total_amount,
             issued_by=cls.admin_user,
         )

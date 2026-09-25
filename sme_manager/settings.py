@@ -2,6 +2,7 @@
 
 import os
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -343,3 +344,27 @@ LOGGING = {
 
 INVOICE_SELLER_NAME = os.getenv("INVOICE_SELLER_NAME", "").strip()
 INVOICE_SELLER_ADDRESS = os.getenv("INVOICE_SELLER_ADDRESS", "").strip()
+
+
+def env_decimal(name, default, minimum=Decimal("0"), maximum=None):
+    """Read a bounded decimal environment variable."""
+    value = os.getenv(name)
+    try:
+        parsed = (
+            Decimal(default)
+            if value is None or not value.strip()
+            else Decimal(value.strip())
+        )
+    except InvalidOperation as exc:
+        raise ImproperlyConfigured(f"{name} must be a decimal number.") from exc
+    if parsed < minimum or (maximum is not None and parsed > maximum):
+        raise ImproperlyConfigured(f"{name} is outside the permitted range.")
+    return parsed
+
+
+# Sales tax applied to new Sales, as a percentage. Defaults to 0 because an SME
+# under the SST registration threshold must not charge it; a registered
+# business sets the rate it is registered for. The rate is snapshotted onto
+# each Sale, so changing it never rewrites tax already charged.
+SALES_TAX_RATE = env_decimal("SALES_TAX_RATE", "0", maximum=Decimal("100"))
+SALES_TAX_LABEL = os.getenv("SALES_TAX_LABEL", "SST").strip() or "SST"

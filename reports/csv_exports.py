@@ -69,9 +69,13 @@ def sales_csv_response(period):
                 _local_timestamp(sale.created_at),
                 safe_text(sale.customer_name or "Walk-in Customer"),
                 sale.item_count,
+                f"{sale.net_amount:.2f}",
+                f"{sale.tax_amount:.2f}",
                 f"{sale.total_amount:.2f}",
                 f"{known_cost:.2f}" if known_cost is not None else "",
-                f"{sale.total_amount - known_cost:.2f}"
+                # Profit comes off the net figure: tax is collected for the
+                # government, so counting it as profit overstates earnings.
+                f"{sale.net_amount - known_cost:.2f}"
                 if known_cost is not None
                 else "",
                 invoice.invoice_number if invoice else "",
@@ -81,7 +85,8 @@ def sales_csv_response(period):
     return _stream_csv(
         rows=rows(),
         header=(
-            "Sale number", "Date/time", "Customer", "Item count", "Total (MYR)",
+            "Sale number", "Date/time", "Customer", "Item count",
+            "Net (MYR)", "Tax (MYR)", "Total (MYR)",
             "Cost (MYR)", "Gross profit (MYR)", "Invoice number", "Created by",
         ),
         filename=f"sales-{period.end_date.isoformat()}.csv",

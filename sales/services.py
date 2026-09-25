@@ -1,5 +1,6 @@
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
+from django.conf import settings
 from django.db import transaction
 
 from customers.models import Customer
@@ -14,6 +15,12 @@ MAX_SALE_TOTAL = Decimal("9999999999999999999999.99")
 
 class SalesOperationError(Exception):
     """Raised when a Sale cannot be completed without violating a rule."""
+
+
+def _configured_tax_rate():
+    """The sales tax percentage to apply to a new Sale."""
+    rate = getattr(settings, "SALES_TAX_RATE", Decimal("0"))
+    return Decimal(rate).quantize(Decimal("0.01"))
 
 
 def _normalize_items(items):
@@ -49,8 +56,22 @@ def _normalize_items(items):
         if product_id in product_ids:
             raise SalesOperationError("Each product may appear only once in a Sale")
 
+        discount = item.get("discount_amount", Decimal("0.00")) or Decimal("0.00")
+        try:
+            discount = Decimal(discount).quantize(Decimal("0.01"))
+        except (ArithmeticError, TypeError, ValueError) as exc:
+            raise SalesOperationError("Discount must be an amount") from exc
+        if discount < 0:
+            raise SalesOperationError("Discount cannot be negative")
+
         product_ids.add(product_id)
-        normalized.append({"product_id": product_id, "quantity": quantity})
+        normalized.append(
+            {
+                "product_id": product_id,
+                "quantity": quantity,
+                "discount_amount": discount,
+            }
+        )
 
     return sorted(normalized, key=lambda item: item["product_id"])
 
@@ -80,7 +101,7 @@ def create_sale(*, customer_id, items, created_by):
 
     products_by_id = {product.pk: product for product in locked_products}
     prepared_items = []
-    total_amount = Decimal("0.00")
+    net_amount = Decimal("0.00")
     for item in normalized_items:
         product = products_by_id[item["product_id"]]
         quantity = item["quantity"]
@@ -92,12 +113,20 @@ def create_sale(*, customer_id, items, created_by):
                 f"({product.sku}), but {quantity} were requested."
             )
 
-        subtotal = product.selling_price * quantity
+        gross = product.selling_price * quantity
+        discount = item["discount_amount"]
+        if discount > gross:
+            raise SalesOperationError(
+                f"Discount of {discount} is more than the "
+                f"{gross} line total for {product.name}."
+            )
+        subtotal = gross - discount
         prepared_items.append(
             {
                 "product": product,
                 "quantity": quantity,
                 "unit_price": product.selling_price,
+                "discount_amount": discount,
                 "subtotal": subtotal,
                 # Snapshotted alongside price so margin on this Sale stays
                 # correct after the Product is later repriced.
@@ -105,14 +134,28 @@ def create_sale(*, customer_id, items, created_by):
                 "cost_subtotal": product.cost_price * quantity,
             }
         )
-        total_amount += subtotal
-        if total_amount > MAX_SALE_TOTAL:
+        net_amount += subtotal
+        if net_amount > MAX_SALE_TOTAL:
             raise SalesOperationError("Sale total exceeds the supported maximum")
+
+    # The rate is read once and stored on the Sale, so a later rate change
+    # never rewrites tax that was already charged to a customer.
+    tax_rate = _configured_tax_rate()
+    tax_amount = (net_amount * tax_rate / Decimal("100")).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    total_amount = net_amount + tax_amount
+    if total_amount > MAX_SALE_TOTAL:
+        raise SalesOperationError("Sale total exceeds the supported maximum")
 
     sale = Sale.objects.create(
         customer=customer,
         customer_name=customer.name if customer else "",
         customer_address=customer.address if customer else "",
+        net_amount=net_amount,
+        tax_rate=tax_rate,
+        tax_amount=tax_amount,
+        tax_label=getattr(settings, "SALES_TAX_LABEL", "SST") if tax_rate else "",
         total_amount=total_amount,
         created_by=created_by,
     )
@@ -137,6 +180,7 @@ def create_sale(*, customer_id, items, created_by):
             product_name=product.name,
             quantity=item["quantity"],
             unit_price=item["unit_price"],
+            discount_amount=item["discount_amount"],
             subtotal=item["subtotal"],
             unit_cost=item["unit_cost"],
             cost_subtotal=item["cost_subtotal"],

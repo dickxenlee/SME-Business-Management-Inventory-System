@@ -26,16 +26,20 @@ def days_ago(days, hour=12, minute=0):
     return local_datetime(day.year, day.month, day.day, hour, minute)
 
 
-def create_sale(*, user, at, customer=None, items=(), record_cost=True):
+def create_sale(*, user, at, customer=None, items=(), record_cost=True, tax_rate=0):
     total = sum(
         (Decimal(str(unit_price)) * quantity for _, quantity, unit_price in items),
         start=Decimal("0.00"),
     )
+    tax = (Decimal(str(tax_rate)) * total / Decimal("100")).quantize(Decimal("0.01"))
     sale = Sale.objects.create(
         customer=customer,
         customer_name=customer.name if customer else "",
         customer_address=customer.address if customer else "",
-        total_amount=total,
+        net_amount=total,
+        tax_rate=Decimal(str(tax_rate)),
+        tax_amount=tax,
+        total_amount=total + tax,
         created_by=user,
     )
     Sale.objects.filter(pk=sale.pk).update(created_at=at)
@@ -77,6 +81,9 @@ def create_invoice(*, sale, user, at):
         customer_address=sale.customer_address,
         seller_name="Reporting SME",
         seller_address="Kuala Lumpur",
+        net_amount=sale.net_amount,
+        tax_rate=sale.tax_rate,
+        tax_amount=sale.tax_amount,
         total_amount=sale.total_amount,
         issued_by=user,
     )

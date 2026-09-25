@@ -58,7 +58,7 @@ class ReportExportTests(TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[1][0], sale.sale_number)
         self.assertEqual(rows[1][4], "12.50")
-        self.assertEqual(rows[1][7], sale.invoice.invoice_number)
+        self.assertEqual(rows[1][9], sale.invoice.invoice_number)
 
     def test_sales_csv_sanitizes_customer_and_username_formula_prefixes(self):
         sale = create_sale(
@@ -72,7 +72,7 @@ class ReportExportTests(TestCase):
         row = self.rows(self.client.get(reverse("reports:sales_csv"), {"period": "today"}))[1]
 
         self.assertEqual(row[2], "'=SUM(A1:A2)")
-        self.assertEqual(row[8], "'@staff-export")
+        self.assertEqual(row[10], "'@staff-export")
 
     def test_inventory_csv_sanitizes_text_without_corrupting_numeric_cells(self):
         movement = StockMovement.objects.create(
@@ -179,9 +179,11 @@ class SalesCsvMarginColumnTests(TestCase):
         )[1]
 
         self.assertEqual(row[4], "25.00")
-        self.assertEqual(row[5], f"{self.product.cost_price * 2:.2f}")
+        self.assertEqual(row[5], "0.00")
+        self.assertEqual(row[6], "25.00")
+        self.assertEqual(row[7], f"{self.product.cost_price * 2:.2f}")
         self.assertEqual(
-            row[6], f"{Decimal('25.00') - self.product.cost_price * 2:.2f}"
+            row[8], f"{Decimal('25.00') - self.product.cost_price * 2:.2f}"
         )
 
     def test_uncosted_sale_leaves_cost_and_profit_blank(self):
@@ -197,5 +199,5 @@ class SalesCsvMarginColumnTests(TestCase):
         )[1]
 
         self.assertEqual(row[4], "25.00")
-        self.assertEqual(row[5], "")
-        self.assertEqual(row[6], "")
+        self.assertEqual(row[7], "")
+        self.assertEqual(row[8], "")

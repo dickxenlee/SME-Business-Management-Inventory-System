@@ -21,6 +21,7 @@ class SalePermissionTests(TestCase):
             customer=None,
             customer_name="",
             customer_address="",
+            net_amount=Decimal("10.00"),
             total_amount=Decimal("10.00"),
             created_by=cls.admin_user,
         )

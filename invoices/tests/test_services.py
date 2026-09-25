@@ -2,7 +2,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.test import SimpleTestCase, TestCase, override_settings
 
 from customers.models import Customer
@@ -170,6 +170,7 @@ class IssueInvoiceServiceTests(TestCase):
         sale = Sale.objects.create(
             customer_name="",
             customer_address="",
+            net_amount=Decimal("0.00"),
             total_amount=Decimal("0.00"),
             created_by=self.user,
         )
@@ -182,27 +183,33 @@ class IssueInvoiceServiceTests(TestCase):
 
         self.assertFalse(Invoice.objects.exists())
 
-    def test_sale_with_mismatched_item_total_is_rejected(self):
-        sale = self.create_source_sale()
-        Sale.objects.filter(pk=sale.pk).update(total_amount=Decimal("999.00"))
+    def test_database_refuses_to_desync_a_sale_total_from_its_net(self):
+        """The invariant now lives in the database, not only in the service.
 
-        with self.assertRaisesMessage(
-            services.InvoiceOperationError,
-            "Sale item subtotals do not match the Sale total",
-        ):
-            services.issue_invoice(sale_id=sale.pk, issued_by=self.user)
+        issue_invoice still checks it, because a database restored from a dump
+        taken before this constraint existed could hold a desynced Sale.
+        """
+        sale = self.create_source_sale()
+
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                Sale.objects.filter(pk=sale.pk).update(
+                    total_amount=Decimal("999.00")
+                )
 
         self.assertFalse(Invoice.objects.exists())
 
-    def test_sale_with_invalid_line_arithmetic_is_rejected(self):
-        sale = self.create_source_sale()
-        sale.items.update(unit_price=Decimal("50.00"))
+    def test_database_refuses_a_line_whose_subtotal_does_not_add_up(self):
+        """Repricing a line without restating its subtotal is now impossible.
 
-        with self.assertRaisesMessage(
-            services.InvoiceOperationError,
-            "Sale item arithmetic is invalid",
-        ):
-            services.issue_invoice(sale_id=sale.pk, issued_by=self.user)
+        Previously only issue_invoice caught this, and only at issuance time;
+        the corrupt row could sit in the table until someone tried to invoice.
+        """
+        sale = self.create_source_sale()
+
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                sale.items.update(unit_price=Decimal("50.00"))
 
         self.assertFalse(Invoice.objects.exists())
 
@@ -271,6 +278,7 @@ class IssueInvoiceServiceTests(TestCase):
         Sale.objects.filter(pk=sale.pk).update(
             customer_name="Later Sale Customer",
             customer_address="Later Sale Address",
+            net_amount=Decimal("999.00"),
             total_amount=Decimal("999.00"),
         )
 

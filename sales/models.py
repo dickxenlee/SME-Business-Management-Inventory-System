@@ -15,6 +15,31 @@ class Sale(models.Model):
     )
     customer_name = models.CharField(max_length=255, blank=True)
     customer_address = models.TextField(blank=True)
+    # net_amount is the taxable base and the figure reporting treats as
+    # revenue. Tax is collected on the government's behalf, so folding it into
+    # revenue would overstate both takings and gross profit.
+    net_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    tax_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    # Snapshotted with the rate: Malaysia moved from GST to SST in 2018, and a
+    # document reissued under a new label would misstate what was charged.
+    tax_label = models.CharField(max_length=20, blank=True)
+    # What the customer actually pays: net_amount + tax_amount.
     total_amount = models.DecimalField(
         max_digits=24,
         decimal_places=2,
@@ -35,7 +60,27 @@ class Sale(models.Model):
             models.CheckConstraint(
                 condition=models.Q(total_amount__gte=0),
                 name="sale_total_amount_nonnegative",
-            )
+            ),
+            models.CheckConstraint(
+                condition=models.Q(net_amount__gte=0),
+                name="sale_net_amount_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(tax_amount__gte=0),
+                name="sale_tax_amount_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(tax_rate__gte=0),
+                name="sale_tax_rate_nonnegative",
+            ),
+            # The three money columns must never drift apart in the database,
+            # whatever writes them.
+            models.CheckConstraint(
+                condition=models.Q(
+                    total_amount=models.F("net_amount") + models.F("tax_amount")
+                ),
+                name="sale_total_is_net_plus_tax",
+            ),
         ]
 
     @property
@@ -70,6 +115,14 @@ class SaleItem(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.00"))],
     )
+    discount_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    # Net of any line discount and before tax: unit_price * quantity
+    # - discount_amount.
     subtotal = models.DecimalField(
         max_digits=24,
         decimal_places=2,
@@ -126,6 +179,19 @@ class SaleItem(models.Model):
             models.CheckConstraint(
                 condition=models.Q(subtotal__gte=0),
                 name="sale_item_subtotal_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(discount_amount__gte=0),
+                name="sale_item_discount_nonnegative",
+            ),
+            # A line can be discounted to zero but never below it, and the
+            # stored subtotal must match the arithmetic it claims.
+            models.CheckConstraint(
+                condition=models.Q(
+                    subtotal=models.F("unit_price") * models.F("quantity")
+                    - models.F("discount_amount")
+                ),
+                name="sale_item_subtotal_matches_line_maths",
             ),
             models.UniqueConstraint(
                 fields=("sale", "product"),

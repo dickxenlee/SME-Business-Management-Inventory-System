@@ -44,6 +44,8 @@ Set these in the hosting platform's secret-variable interface. Never commit real
 | `DB_SSLMODE` | Required secure mode: `require`, `verify-ca`, or `verify-full`; prefer `verify-full` when certificates and host verification are configured |
 | `DB_CONNECT_TIMEOUT` | Initial value `5` |
 | `DB_CONN_MAX_AGE` | Initial value `60`; reduce it if database connection limits require it |
+| `SALES_TAX_RATE` | Sales tax percentage, e.g. `6`. Keep `0` unless the business is SST registered |
+| `SALES_TAX_LABEL` | Name shown on documents for that tax, normally `SST` |
 | `INVOICE_SELLER_NAME` | Real legal or trading name shown on newly issued Invoices |
 | `INVOICE_SELLER_ADDRESS` | Real seller address shown on newly issued Invoices |
 

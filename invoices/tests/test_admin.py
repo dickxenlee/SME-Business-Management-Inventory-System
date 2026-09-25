@@ -18,6 +18,7 @@ class InvoiceAdminTests(TestCase):
         cls.sale = Sale.objects.create(
             customer_name="Admin Customer",
             customer_address="Admin Customer Address",
+            net_amount=Decimal("30.00"),
             total_amount=Decimal("30.00"),
             created_by=cls.admin_user,
         )
@@ -27,6 +28,7 @@ class InvoiceAdminTests(TestCase):
             customer_address=cls.sale.customer_address,
             seller_name="Admin SME",
             seller_address="Admin Business Address",
+            net_amount=cls.sale.total_amount,
             total_amount=cls.sale.total_amount,
             issued_by=cls.admin_user,
         )

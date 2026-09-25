@@ -36,6 +36,10 @@ class SaleModelTests(TestCase):
             "created_by": self.user,
         }
         values.update(overrides)
+        # These fixtures are untaxed, so net mirrors whatever total the caller
+        # asked for; that keeps total = net + tax satisfied and lets a test
+        # overriding total_amount still isolate the constraint it is probing.
+        values.setdefault("net_amount", values["total_amount"])
         return Sale.objects.create(**values)
 
     def create_item(self, sale, **overrides):

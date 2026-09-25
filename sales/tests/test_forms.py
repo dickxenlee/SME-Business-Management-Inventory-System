@@ -62,9 +62,14 @@ class SaleFormTests(TestCase):
         self.assertIn("customer", form.errors)
 
     def test_item_form_exposes_no_price_field(self):
+        """Staff choose what and how many, and may discount -- never the price
+        itself, which always comes from the Product."""
         form = SaleItemForm()
 
-        self.assertEqual(set(form.fields), {"product", "quantity"})
+        self.assertEqual(
+            set(form.fields), {"product", "quantity", "discount_amount"}
+        )
+        self.assertNotIn("unit_price", form.fields)
 
     def test_product_choices_include_current_price_and_stock(self):
         form = SaleItemForm()

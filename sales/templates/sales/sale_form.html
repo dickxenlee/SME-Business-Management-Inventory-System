@@ -38,7 +38,7 @@
                     {% endcomment %}
                     <div class="sale-item-row border rounded p-3{% if item_form.DELETE.value %} sale-item-removed{% endif %}">
                         <div class="row g-3 align-items-end">
-                            <div class="col-12 col-lg-6">
+                            <div class="col-12 col-lg-4">
                                 <label class="form-label" for="{{ item_form.product.id_for_label }}">Product</label>
                                 {{ item_form.product }}
                                 {% for error in item_form.product.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
@@ -48,6 +48,11 @@
                                 {{ item_form.quantity }}
                                 {% for error in item_form.quantity.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                                 <div class="form-text sale-item-stock-hint"></div>
+                            </div>
+                            <div class="col-6 col-lg-2">
+                                <label class="form-label" for="{{ item_form.discount_amount.id_for_label }}">Discount (RM)</label>
+                                {{ item_form.discount_amount }}
+                                {% for error in item_form.discount_amount.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                             </div>
                             <div class="col-6 col-lg-2 text-end">
                                 <span class="form-label d-block">Line total</span>
@@ -62,10 +67,15 @@
                     </div>
                 {% endfor %}
             </div>
-            <div class="sale-total-bar d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <div class="sale-total-bar d-flex justify-content-between align-items-center mt-3 pt-3 border-top"
+                 data-tax-rate="{{ sales_tax_rate|floatformat:2 }}" data-tax-label="{{ sales_tax_label }}">
                 <span class="text-secondary"><span id="sale-item-count">0</span> item(s)</span>
                 <div class="text-end">
-                    <span class="d-block small text-secondary">Sale total</span>
+                    <div class="small text-secondary">Subtotal <span id="sale-net-total">RM 0.00</span></div>
+                    <div class="small text-secondary{% if not sales_tax_rate %} d-none{% endif %}" id="sale-tax-line">
+                        {{ sales_tax_label }} <span id="sale-tax-total">RM 0.00</span>
+                    </div>
+                    <span class="d-block small text-secondary mt-1">Sale total</span>
                     <strong class="h3 mb-0" id="sale-grand-total">RM 0.00</strong>
                 </div>
             </div>
@@ -81,7 +91,7 @@
 <template id="empty-sale-item">
     <div class="sale-item-row border rounded p-3">
         <div class="row g-3 align-items-end">
-            <div class="col-12 col-lg-6">
+            <div class="col-12 col-lg-4">
                 <label class="form-label" for="{{ item_formset.empty_form.product.id_for_label }}">Product</label>
                 {{ item_formset.empty_form.product }}
             </div>
@@ -89,6 +99,10 @@
                 <label class="form-label" for="{{ item_formset.empty_form.quantity.id_for_label }}">Quantity</label>
                 {{ item_formset.empty_form.quantity }}
                 <div class="form-text sale-item-stock-hint"></div>
+            </div>
+            <div class="col-6 col-lg-2">
+                <label class="form-label" for="{{ item_formset.empty_form.discount_amount.id_for_label }}">Discount (RM)</label>
+                {{ item_formset.empty_form.discount_amount }}
             </div>
             <div class="col-6 col-lg-2 text-end">
                 <span class="form-label d-block">Line total</span>
@@ -166,8 +180,16 @@ document.addEventListener("DOMContentLoaded", () => {
             );
         }
 
-        const lineTotal =
+        const discountInput = row.querySelector('input[name$="-discount_amount"]');
+        const discount = discountInput ? parseFloat(discountInput.value) || 0 : 0;
+        const gross =
             !removed && price && Number.isFinite(qty) && qty > 0 ? price * qty : 0;
+        // Never show a negative line: the server rejects an over-discount, and
+        // the form should not imply money flowing back to the customer.
+        const lineTotal = Math.max(gross - discount, 0);
+        if (discountInput) {
+            discountInput.classList.toggle("is-invalid", discount > gross);
+        }
         if (subtotalEl) subtotalEl.textContent = money(lineTotal);
         return lineTotal;
     };
@@ -182,7 +204,12 @@ document.addEventListener("DOMContentLoaded", () => {
             total += lineTotal;
             if (lineTotal > 0) counted += 1;
         });
-        document.getElementById("sale-grand-total").textContent = money(total);
+        const bar = document.querySelector(".sale-total-bar");
+        const taxRate = parseFloat(bar.dataset.taxRate) || 0;
+        const tax = Math.round(total * taxRate) / 100;
+        document.getElementById("sale-net-total").textContent = money(total);
+        document.getElementById("sale-tax-total").textContent = money(tax);
+        document.getElementById("sale-grand-total").textContent = money(total + tax);
         document.getElementById("sale-item-count").textContent = counted;
     };
 

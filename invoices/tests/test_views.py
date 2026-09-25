@@ -55,6 +55,7 @@ class InvoiceViewTests(TestCase):
             customer_address=self.sale.customer_address,
             seller_name="View SME",
             seller_address="View Business Address",
+            net_amount=self.sale.total_amount,
             total_amount=self.sale.total_amount,
             issued_by=self.user,
         )
