@@ -5,6 +5,13 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 
+class PaymentMethod(models.TextChoices):
+    CASH = "CASH", "Cash"
+    CARD = "CARD", "Card"
+    EWALLET = "EWALLET", "E-wallet"
+    TRANSFER = "TRANSFER", "Bank transfer"
+
+
 class Sale(models.Model):
     customer = models.ForeignKey(
         "customers.Customer",
@@ -45,6 +52,29 @@ class Sale(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.00"))],
     )
+    # Blank on Sales recorded before payment capture existed. Those are
+    # reported as unrecorded rather than assumed to be cash.
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
+        blank=True,
+    )
+    # Only meaningful for cash: what the customer handed over, and what came
+    # back. Null for card and e-wallet, where the exact amount is taken.
+    amount_tendered = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    change_given = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -81,14 +111,66 @@ class Sale(models.Model):
                 ),
                 name="sale_total_is_net_plus_tax",
             ),
+            # Tendered and change are recorded together or not at all.
+            models.CheckConstraint(
+                condition=models.Q(
+                    amount_tendered__isnull=True, change_given__isnull=True
+                )
+                | models.Q(
+                    amount_tendered__isnull=False, change_given__isnull=False
+                ),
+                name="sale_cash_fields_recorded_together",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(change_given__isnull=True)
+                | models.Q(
+                    change_given=models.F("amount_tendered")
+                    - models.F("total_amount")
+                ),
+                name="sale_change_is_tendered_less_total",
+            ),
         ]
 
     @property
     def sale_number(self):
         return f"SALE-{self.pk:06d}" if self.pk is not None else "SALE-UNSAVED"
 
+    @property
+    def is_voided(self):
+        return hasattr(self, "reversal")
+
     def __str__(self):
         return self.sale_number
+
+
+class SaleReversal(models.Model):
+    """A void of a completed Sale.
+
+    The Sale itself is never edited or deleted: the business record of what
+    was rung up stays exactly as it was, and this is a separate, later record
+    that returns the stock and takes the Sale out of revenue.
+    """
+
+    sale = models.OneToOneField(
+        Sale,
+        on_delete=models.PROTECT,
+        related_name="reversal",
+    )
+    reason = models.TextField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="sale_reversals",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+
+    def __str__(self):
+        return f"Void of {self.sale.sale_number}"
 
 
 class SaleItem(models.Model):

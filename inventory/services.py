@@ -29,13 +29,14 @@ def _change_stock(
     reason="",
     quantity=None,
     desired_stock=None,
+    allow_inactive=False,
 ):
     try:
         product = Product.objects.select_for_update().get(pk=product_id)
     except Product.DoesNotExist as exc:
         raise InventoryOperationError("Product not found") from exc
 
-    if not product.is_active:
+    if not product.is_active and not allow_inactive:
         raise InventoryOperationError(
             "Inactive products cannot receive stock movements"
         )
@@ -90,13 +91,20 @@ def _change_stock(
     )
 
 
-def stock_in(*, product_id, quantity, performed_by, reason=""):
+def stock_in(*, product_id, quantity, performed_by, reason="", allow_inactive=False):
+    """Add stock.
+
+    allow_inactive exists for returns: a Product can be deactivated after it
+    was sold, and refusing to take the goods back would leave the void
+    impossible and the stock count permanently wrong.
+    """
     return _change_stock(
         product_id=product_id,
         movement_type=StockMovement.MovementType.STOCK_IN,
         quantity=quantity,
         performed_by=performed_by,
         reason=reason,
+        allow_inactive=allow_inactive,
     )
 
 

@@ -12,15 +12,28 @@
     <div class="d-flex flex-wrap gap-2">
         {% if sale.invoice %}
             <a class="btn btn-primary" href="{% url 'invoices:detail' sale.invoice.pk %}">View invoice</a>
-        {% else %}
+        {% elif not sale.is_voided %}
             <form method="post" action="{% url 'invoices:issue' sale.pk %}">
                 {% csrf_token %}
                 <button class="btn btn-primary" type="submit">Issue invoice</button>
             </form>
         {% endif %}
         <a class="btn btn-outline-primary" href="{% url 'sales:create' %}">Create another sale</a>
+        {% if user.is_superuser and not sale.is_voided and not sale.invoice %}
+            <a class="btn btn-outline-danger" href="{% url 'sales:void' sale.pk %}">Void sale</a>
+        {% endif %}
     </div>
 </div>
+
+{% if sale.is_voided %}
+    <div class="alert alert-danger d-flex flex-wrap gap-2 align-items-center" role="alert">
+        <strong>Voided</strong>
+        <span>on {{ sale.reversal.created_at|date:"j M Y, g:i a" }}
+        by {{ sale.reversal.created_by.username|default:"Former user" }}
+        &mdash; {{ sale.reversal.reason }}</span>
+        <span class="ms-auto small">Stock was returned and this Sale no longer counts towards revenue.</span>
+    </div>
+{% endif %}
 
 <section class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
@@ -29,6 +42,17 @@
             <dd class="col-sm-8">{{ sale.customer_name|default:"Walk-in Customer" }}</dd>
             <dt class="col-sm-4">Customer address</dt>
             <dd class="col-sm-8">{% if sale.customer_address %}{{ sale.customer_address|linebreaksbr }}{% else %}—{% endif %}</dd>
+            <dt class="col-sm-4">Payment</dt>
+            <dd class="col-sm-8">
+                {% if sale.payment_method %}
+                    {{ sale.get_payment_method_display }}
+                    {% if sale.amount_tendered is not None %}
+                        &mdash; received RM {{ sale.amount_tendered|floatformat:2 }}, change RM {{ sale.change_given|floatformat:2 }}
+                    {% endif %}
+                {% else %}
+                    <span class="text-secondary">Not recorded</span>
+                {% endif %}
+            </dd>
             <dt class="col-sm-4">Created by</dt>
             <dd class="col-sm-8">{{ sale.created_by.username|default:"Former user" }}</dd>
         </dl>

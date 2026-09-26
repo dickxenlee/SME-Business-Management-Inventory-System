@@ -9,6 +9,8 @@ from customers.models import Customer
 from inventory.services import MAX_STOCK_QUANTITY
 from products.models import Product
 
+from .models import PaymentMethod
+
 
 class SaleForm(forms.Form):
     customer = forms.ModelChoiceField(
@@ -17,12 +19,63 @@ class SaleForm(forms.Form):
         empty_label="Walk-in Customer",
     )
 
+    payment_method = forms.ChoiceField(
+        choices=[("", "Not recorded")] + list(PaymentMethod.choices),
+        required=False,
+        label="Payment method",
+    )
+    amount_tendered = forms.DecimalField(
+        required=False,
+        min_value=Decimal("0.00"),
+        decimal_places=2,
+        max_digits=24,
+        label="Cash received (RM)",
+        help_text="Leave blank unless paying cash; change is worked out for you.",
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["customer"].queryset = Customer.objects.filter(
             is_active=True
         ).order_by("name", "pk")
         self.fields["customer"].widget.attrs["class"] = "form-select"
+        self.fields["payment_method"].widget.attrs["class"] = "form-select"
+        self.fields["amount_tendered"].widget.attrs.update(
+            {
+                "class": "form-control",
+                "inputmode": "decimal",
+                "min": "0",
+                "step": "0.01",
+                "placeholder": "0.00",
+            }
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        method = cleaned.get("payment_method")
+        tendered = cleaned.get("amount_tendered")
+        # Cash is the only method where a tendered figure means anything; on
+        # card the exact amount is taken, so a value here would be fiction.
+        if tendered is not None and method != PaymentMethod.CASH:
+            self.add_error(
+                "amount_tendered",
+                "Cash received only applies when the payment method is Cash.",
+            )
+        return cleaned
+
+
+class VoidSaleForm(forms.Form):
+    reason = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+        label="Why is this Sale being voided?",
+        help_text="Recorded against the Sale permanently.",
+    )
+
+    def clean_reason(self):
+        reason = self.cleaned_data["reason"].strip()
+        if not reason:
+            raise ValidationError("A reason is required to void a Sale.")
+        return reason
 
 
 class ProductSelect(forms.Select):

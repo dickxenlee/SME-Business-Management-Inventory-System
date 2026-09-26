@@ -19,6 +19,19 @@
             {{ form.customer }}
             {% for error in form.customer.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
             <div class="form-text">Leave blank for a walk-in customer.</div>
+            <div class="row g-3 mt-2">
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="{{ form.payment_method.id_for_label }}">{{ form.payment_method.label }}</label>
+                    {{ form.payment_method }}
+                    {% for error in form.payment_method.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="{{ form.amount_tendered.id_for_label }}">{{ form.amount_tendered.label }}</label>
+                    {{ form.amount_tendered }}
+                    <div class="form-text" id="change-due-hint">{{ form.amount_tendered.help_text }}</div>
+                    {% for error in form.amount_tendered.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
         </div>
     </section>
 
@@ -211,6 +224,24 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("sale-tax-total").textContent = money(tax);
         document.getElementById("sale-grand-total").textContent = money(total + tax);
         document.getElementById("sale-item-count").textContent = counted;
+
+        const tenderedInput = document.querySelector('[name="amount_tendered"]');
+        const hint = document.getElementById("change-due-hint");
+        if (tenderedInput && hint) {
+            const tendered = parseFloat(tenderedInput.value);
+            const grand = total + tax;
+            if (Number.isFinite(tendered) && tenderedInput.value !== "") {
+                const change = tendered - grand;
+                hint.textContent =
+                    change >= 0
+                        ? `Change due ${money(change)}`
+                        : `Short by ${money(Math.abs(change))}`;
+                hint.classList.toggle("text-danger", change < 0);
+            } else {
+                hint.textContent = hint.dataset.defaultText || hint.textContent;
+                hint.classList.remove("text-danger");
+            }
+        }
     };
 
     // Progressive enhancement over the native select: a plain dropdown is
@@ -279,6 +310,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     rows.addEventListener("change", syncAllRows);
     rows.addEventListener("input", syncAllRows);
+
+    const changeHint = document.getElementById("change-due-hint");
+    if (changeHint) {
+        changeHint.dataset.defaultText = changeHint.textContent.trim();
+    }
+    const tendered = document.querySelector('[name="amount_tendered"]');
+    if (tendered) tendered.addEventListener("input", syncAllRows);
+    const method = document.querySelector('[name="payment_method"]');
+    if (method) method.addEventListener("change", syncAllRows);
 
     enhanceAllRows();
     syncAllRows();

@@ -28,6 +28,13 @@ def issue_invoice(*, sale_id, issued_by):
     if existing_invoice is not None:
         return existing_invoice
 
+    # A voided Sale's goods went back and its money was returned. Invoicing it
+    # would hand the customer a document for a Sale that no longer counts.
+    if hasattr(sale, "reversal"):
+        raise InvoiceOperationError(
+            f"{sale.sale_number} was voided and cannot be invoiced"
+        )
+
     seller_name = getattr(settings, "INVOICE_SELLER_NAME", "").strip()
     seller_address = getattr(settings, "INVOICE_SELLER_ADDRESS", "").strip()
     if not seller_name or not seller_address:

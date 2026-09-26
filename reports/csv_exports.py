@@ -46,6 +46,8 @@ def sales_csv_response(period):
         Sale.objects.filter(
             created_at__gte=period.start_at,
             created_at__lt=period.end_at,
+            # Voided Sales went back; exporting them would overstate takings.
+            reversal__isnull=True,
         )
         .select_related("created_by", "invoice")
         .annotate(
@@ -79,6 +81,7 @@ def sales_csv_response(period):
                 if known_cost is not None
                 else "",
                 invoice.invoice_number if invoice else "",
+                sale.get_payment_method_display() if sale.payment_method else "",
                 safe_text(sale.created_by.username if sale.created_by else ""),
             )
 
@@ -87,7 +90,8 @@ def sales_csv_response(period):
         header=(
             "Sale number", "Date/time", "Customer", "Item count",
             "Net (MYR)", "Tax (MYR)", "Total (MYR)",
-            "Cost (MYR)", "Gross profit (MYR)", "Invoice number", "Created by",
+            "Cost (MYR)", "Gross profit (MYR)", "Invoice number",
+            "Payment method", "Created by",
         ),
         filename=f"sales-{period.end_date.isoformat()}.csv",
     )

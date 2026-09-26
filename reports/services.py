@@ -76,9 +76,23 @@ def resolve_period(value, *, today=None):
 
 
 def _sales_in_period(period):
+    """Completed Sales in the period, excluding any that were voided.
+
+    A voided Sale keeps its record but its goods went back and its money was
+    returned, so counting it would overstate takings and gross profit.
+    """
     return Sale.objects.filter(
         created_at__gte=period.start_at,
         created_at__lt=period.end_at,
+        reversal__isnull=True,
+    )
+
+
+def _sale_items_in_period(period):
+    return SaleItem.objects.filter(
+        sale__created_at__gte=period.start_at,
+        sale__created_at__lt=period.end_at,
+        sale__reversal__isnull=True,
     )
 
 
@@ -148,10 +162,7 @@ def _margin_metrics(item_queryset):
 def get_sales_report(period):
     """Return selected-period Sales metrics from immutable Sale data."""
     summary = _sales_summary(period)
-    item_queryset = SaleItem.objects.filter(
-        sale__created_at__gte=period.start_at,
-        sale__created_at__lt=period.end_at,
-    )
+    item_queryset = _sale_items_in_period(period)
     top_base = item_queryset.values(
         "product_id",
         "product__sku",
@@ -317,12 +328,7 @@ def get_dashboard_data(period, user):
         "sale_count": sales["sale_count"],
         "average_sale": sales["average_sale"],
         "invoice_rate": invoice_rate,
-        "margin": _margin_metrics(
-            SaleItem.objects.filter(
-                sale__created_at__gte=period.start_at,
-                sale__created_at__lt=period.end_at,
-            )
-        ),
+        "margin": _margin_metrics(_sale_items_in_period(period)),
         "active_customers": Customer.objects.filter(is_active=True).count(),
         "inventory": _inventory_health(),
         "attention_products": attention_products,
