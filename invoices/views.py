@@ -1,14 +1,20 @@
 from datetime import date
 
+from django import forms
 from django.contrib import messages
 from django.db.models import Q
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.views.generic import DetailView, ListView
 
 from .mixins import InvoicesAccessMixin
-from .models import Invoice
-from .services import InvoiceOperationError, issue_invoice
+from .models import CreditNote, Invoice
+from .services import (
+    CreditNoteOperationError,
+    InvoiceOperationError,
+    issue_credit_note,
+    issue_invoice,
+)
 
 
 def _derived_pk_from_query(query, prefix):
@@ -80,3 +86,78 @@ class IssueInvoiceView(InvoicesAccessMixin, View):
 
         messages.success(request, f"{invoice.invoice_number} was issued.")
         return redirect("invoices:detail", pk=invoice.pk)
+
+
+class CreditNoteForm(forms.Form):
+    reason = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+        label="Why is this Invoice being credited?",
+        help_text="Printed on the credit note and kept permanently.",
+    )
+
+    def clean_reason(self):
+        reason = self.cleaned_data["reason"].strip()
+        if not reason:
+            raise forms.ValidationError("A reason is required.")
+        return reason
+
+
+class OwnerOnlyMixin(InvoicesAccessMixin):
+    """Crediting moves stock and money, so it is the owner's call."""
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+
+class IssueCreditNoteView(OwnerOnlyMixin, View):
+    template_name = "invoices/credit_note_form.html"
+
+    def get_invoice(self, pk):
+        return get_object_or_404(
+            Invoice.objects.select_related("sale", "credit_note"), pk=pk
+        )
+
+    def get(self, request, pk):
+        invoice = self.get_invoice(pk)
+        return render(
+            request,
+            self.template_name,
+            {"invoice": invoice, "form": CreditNoteForm()},
+        )
+
+    def post(self, request, pk):
+        invoice = self.get_invoice(pk)
+        form = CreditNoteForm(request.POST)
+        if form.is_valid():
+            try:
+                credit_note = issue_credit_note(
+                    invoice_id=invoice.pk,
+                    reason=form.cleaned_data["reason"],
+                    issued_by=request.user,
+                )
+            except CreditNoteOperationError as exc:
+                form.add_error(None, str(exc))
+            else:
+                messages.success(
+                    request,
+                    f"{credit_note.credit_note_number} was issued and the "
+                    "stock returned.",
+                )
+                return redirect("invoices:credit_note_detail", pk=credit_note.pk)
+        return render(
+            request, self.template_name, {"invoice": invoice, "form": form}
+        )
+
+
+class CreditNoteDetailView(InvoicesAccessMixin, DetailView):
+    model = CreditNote
+    template_name = "invoices/credit_note_detail.html"
+    context_object_name = "credit_note"
+
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .select_related("invoice__sale", "issued_by")
+            .prefetch_related("items")
+        )

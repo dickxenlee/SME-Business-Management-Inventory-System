@@ -5,8 +5,24 @@
 {% block content %}
 <div class="screen-only d-flex flex-column flex-sm-row justify-content-between gap-3 mb-4">
     <a class="align-self-start small text-decoration-none" href="{% url 'invoices:list' %}">&larr; Back to invoices</a>
-    <button class="btn btn-primary align-self-start" type="button" onclick="window.print()">Print invoice</button>
+    <div class="d-flex flex-wrap gap-2">
+        {% if invoice.credit_note %}
+            <a class="btn btn-outline-danger align-self-start" href="{% url 'invoices:credit_note_detail' invoice.credit_note.pk %}">View credit note</a>
+        {% elif user.is_superuser %}
+            <a class="btn btn-outline-danger align-self-start" href="{% url 'invoices:issue_credit_note' invoice.pk %}">Issue credit note</a>
+        {% endif %}
+        <button class="btn btn-primary align-self-start" type="button" onclick="window.print()">Print invoice</button>
+    </div>
 </div>
+
+{% if invoice.credit_note %}
+    <div class="alert alert-danger screen-only" role="alert">
+        <strong>Cancelled</strong> by
+        <a href="{% url 'invoices:credit_note_detail' invoice.credit_note.pk %}">{{ invoice.credit_note.credit_note_number }}</a>
+        on {{ invoice.credit_note.issued_at|date:"j M Y, g:i a" }}
+        &mdash; {{ invoice.credit_note.reason }}
+    </div>
+{% endif %}
 
 <article class="invoice-document bg-white shadow-sm" aria-labelledby="invoice-heading">
     <header class="invoice-header">

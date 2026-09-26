@@ -76,23 +76,21 @@ def resolve_period(value, *, today=None):
 
 
 def _sales_in_period(period):
-    """Completed Sales in the period, excluding any that were voided.
+    """Completed Sales in the period that have not been undone.
 
-    A voided Sale keeps its record but its goods went back and its money was
-    returned, so counting it would overstate takings and gross profit.
+    A voided or credited Sale keeps its record, but its goods went back and
+    its money was returned, so counting it would overstate takings and gross
+    profit.
     """
-    return Sale.objects.filter(
+    return Sale.objects.not_cancelled().filter(
         created_at__gte=period.start_at,
         created_at__lt=period.end_at,
-        reversal__isnull=True,
     )
 
 
 def _sale_items_in_period(period):
     return SaleItem.objects.filter(
-        sale__created_at__gte=period.start_at,
-        sale__created_at__lt=period.end_at,
-        sale__reversal__isnull=True,
+        sale__in=_sales_in_period(period)
     )
 
 

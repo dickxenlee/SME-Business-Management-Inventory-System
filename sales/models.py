@@ -12,6 +12,20 @@ class PaymentMethod(models.TextChoices):
     TRANSFER = "TRANSFER", "Bank transfer"
 
 
+class SaleQuerySet(models.QuerySet):
+    def not_cancelled(self):
+        """Sales that still count: neither voided nor credited.
+
+        Two different documents can undo a Sale, so the rule lives here rather
+        than being spelled out at each call site where one of them would
+        eventually be forgotten.
+        """
+        return self.filter(reversal__isnull=True).filter(
+            models.Q(invoice__isnull=True)
+            | models.Q(invoice__credit_note__isnull=True)
+        )
+
+
 class Sale(models.Model):
     customer = models.ForeignKey(
         "customers.Customer",
@@ -84,6 +98,8 @@ class Sale(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    objects = SaleQuerySet.as_manager()
+
     class Meta:
         ordering = ["-created_at", "-pk"]
         constraints = [
@@ -138,6 +154,17 @@ class Sale(models.Model):
     @property
     def is_voided(self):
         return hasattr(self, "reversal")
+
+    @property
+    def is_credited(self):
+        invoice = getattr(self, "invoice", None)
+        return invoice is not None and hasattr(invoice, "credit_note")
+
+    @property
+    def is_cancelled(self):
+        """Undone by either route: a void before invoicing, or a credit note
+        after it."""
+        return self.is_voided or self.is_credited
 
     def __str__(self):
         return self.sale_number
