@@ -34,6 +34,11 @@
 
                     <button class="btn btn-primary w-100" type="submit">Sign in</button>
                 </form>
+                {% if password_reset_enabled %}
+                    <p class="text-center small mt-3 mb-0">
+                        <a href="{% url 'core:password_reset' %}">Forgot your password?</a>
+                    </p>
+                {% endif %}
             </div>
         </section>
     </div>

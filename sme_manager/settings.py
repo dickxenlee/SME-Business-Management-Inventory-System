@@ -172,6 +172,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.account_features",
             ],
         },
     },
@@ -368,3 +369,33 @@ def env_decimal(name, default, minimum=Decimal("0"), maximum=None):
 # each Sale, so changing it never rewrites tax already charged.
 SALES_TAX_RATE = env_decimal("SALES_TAX_RATE", "0", maximum=Decimal("100"))
 SALES_TAX_LABEL = os.getenv("SALES_TAX_LABEL", "SST").strip() or "SST"
+
+# Outgoing email, used only for password resets. Without a host there is no
+# way to deliver a reset link, so the feature is switched off rather than
+# offered as a link that silently does nothing.
+EMAIL_HOST = os.getenv("EMAIL_HOST", "").strip()
+EMAIL_PORT = env_int("EMAIL_PORT", 587, minimum=1, maximum=65535)
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "").strip()
+
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+elif IS_PRODUCTION:
+    # No host in production: fail loudly on send rather than dropping a reset
+    # link into the void where nobody would notice.
+    EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
+else:
+    # Development prints the reset link to the console, which is the whole
+    # point of being able to test the flow without a mail server.
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+PASSWORD_RESET_ENABLED = bool(EMAIL_HOST) or not IS_PRODUCTION
+if IS_PRODUCTION and EMAIL_HOST and not DEFAULT_FROM_EMAIL:
+    raise ImproperlyConfigured(
+        "DEFAULT_FROM_EMAIL must be set when EMAIL_HOST is configured."
+    )
+PASSWORD_RESET_TIMEOUT = env_int(
+    "PASSWORD_RESET_TIMEOUT_SECONDS", 3600, minimum=300, maximum=86400
+)

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Staff accounts | SME Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <p class="report-eyebrow mb-1">Access control</p>
+        <h1 class="h2 mb-1">Staff accounts</h1>
+        <p class="text-secondary mb-0">Who can sign in and use the system.</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'core:staff_create' %}">Add staff member</a>
+</div>
+
+{% if not password_reset_enabled %}
+    <div class="alert alert-warning" role="alert">
+        <strong>Password reset by email is switched off.</strong>
+        No mail host is configured, so staff who forget a password cannot
+        recover it themselves. You can still set one for them here.
+    </div>
+{% endif %}
+
+<section class="card border-0 shadow-sm overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 table-cards">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">Username</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Access</th>
+                    <th scope="col" class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for member in staff_members %}
+                    <tr>
+                        <td data-label="Username" class="fw-semibold">
+                            {{ member.username }}
+                            {% if member == user %}<span class="badge text-bg-info ms-1">You</span>{% endif %}
+                        </td>
+                        <td data-label="Email">
+                            {% if member.email %}{{ member.email }}{% else %}<span class="text-secondary">No email &mdash; cannot self-reset</span>{% endif %}
+                        </td>
+                        <td data-label="Role">
+                            {% if member.is_superuser %}
+                                <span class="badge text-bg-dark">Owner</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">Staff</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Access">
+                            {% if member.is_active %}
+                                <span class="badge text-bg-success">Active</span>
+                            {% else %}
+                                <span class="badge text-bg-danger">Suspended</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Actions" class="text-end row-actions">
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'core:staff_set_password' member.pk %}">Set password</a>
+                            {% if member != user %}
+                                <form class="d-inline" method="post" action="{% url 'core:staff_toggle_access' member.pk %}">
+                                    {% csrf_token %}
+                                    {% if member.is_active %}
+                                        <button class="btn btn-sm btn-outline-danger" type="submit"
+                                                onclick="return confirm('Suspend “{{ member.username|escapejs }}”? They will not be able to sign in.');">Suspend</button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-success" type="submit">Restore access</button>
+                                    {% endif %}
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td class="text-center text-secondary py-5" colspan="5">No accounts yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<p class="small text-secondary mt-3 mb-0">
+    Accounts are suspended, never deleted: Sales, Invoices and stock movements
+    record who performed them, and that history has to keep pointing somewhere.
+</p>
+{% endblock %}

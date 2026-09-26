@@ -11,6 +11,7 @@ This is a portfolio and staging implementation. It does not claim commercial pro
 ## Main features
 
 - Role-based access for Django superusers (Admin) and members of the `Staff` group
+- Staff account management, self-service password change, and email password reset that is hidden when no mail host is configured
 - Searchable, paginated Product and Customer management with soft deactivation
 - Transactional Stock In, Stock Out, and Adjustment workflows with an auditable movement chain
 - Atomic multi-item Sales with stock validation, rollback, and immutable historical snapshots
@@ -84,7 +85,7 @@ Dashboard and Reports support Today, the last 7 days, and the last 30 days using
 
 ## Testing and CI
 
-The project has **387 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, gross-margin reporting, login lockout, CSV security, production settings, and health checks.
+The project has **405 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, gross-margin reporting, login lockout, CSV security, production settings, and health checks.
 
 GitHub Actions runs the suite against a real PostgreSQL service and separately validates the production configuration. Local verification uses the same checks:
 
