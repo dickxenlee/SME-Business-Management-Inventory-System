@@ -3,14 +3,14 @@ from datetime import date
 from django.conf import settings
 from django.contrib import messages
 from django.db.models import Q
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.views.generic import DetailView, ListView
 
-from .forms import SaleForm, SaleItemFormSet
+from .forms import SaleForm, SaleItemFormSet, VoidSaleForm
 from .mixins import SalesAccessMixin
 from .models import Sale
-from .services import SalesOperationError, create_sale
+from .services import SalesOperationError, create_sale, void_sale
 
 
 def _sale_pk_from_query(query):
@@ -99,11 +99,20 @@ class SaleCreateView(SalesAccessMixin, View):
                     customer_id=customer.pk if customer else None,
                     items=items,
                     created_by=request.user,
+                    payment_method=sale_form.cleaned_data.get("payment_method") or "",
+                    amount_tendered=sale_form.cleaned_data.get("amount_tendered"),
                 )
             except SalesOperationError as exc:
                 sale_error = str(exc)
             else:
-                messages.success(request, f"{sale.sale_number} was completed.")
+                if sale.change_given is not None:
+                    messages.success(
+                        request,
+                        f"{sale.sale_number} was completed. "
+                        f"Change due: RM {sale.change_given:.2f}",
+                    )
+                else:
+                    messages.success(request, f"{sale.sale_number} was completed.")
                 return redirect("sales:detail", pk=sale.pk)
 
         return self.render_forms(request, sale_form, item_formset, sale_error)
@@ -122,3 +131,45 @@ class SaleCreateView(SalesAccessMixin, View):
                 "sales_tax_label": getattr(settings, "SALES_TAX_LABEL", "SST"),
             },
         )
+
+
+class VoidSaleView(SalesAccessMixin, View):
+    """Void a Sale. Restricted to superusers: it moves stock and money."""
+
+    template_name = "sales/sale_void.html"
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def get_sale(self, pk):
+        return get_object_or_404(
+            Sale.objects.select_related("invoice", "reversal"), pk=pk
+        )
+
+    def get(self, request, pk):
+        sale = self.get_sale(pk)
+        return render(
+            request,
+            self.template_name,
+            {"sale": sale, "form": VoidSaleForm()},
+        )
+
+    def post(self, request, pk):
+        sale = self.get_sale(pk)
+        form = VoidSaleForm(request.POST)
+        if form.is_valid():
+            try:
+                void_sale(
+                    sale_id=sale.pk,
+                    reason=form.cleaned_data["reason"],
+                    voided_by=request.user,
+                )
+            except SalesOperationError as exc:
+                form.add_error(None, str(exc))
+            else:
+                messages.success(
+                    request,
+                    f"{sale.sale_number} was voided and its stock returned.",
+                )
+                return redirect("sales:detail", pk=sale.pk)
+        return render(request, self.template_name, {"sale": sale, "form": form})

@@ -14,6 +14,8 @@ This is a portfolio and staging implementation. It does not claim commercial pro
 - Searchable, paginated Product and Customer management with soft deactivation
 - Transactional Stock In, Stock Out, and Adjustment workflows with an auditable movement chain
 - Atomic multi-item Sales with stock validation, rollback, and immutable historical snapshots
+- Payment capture (cash, card, e-wallet, transfer) with change calculated at the counter
+- Sale voiding that returns stock and leaves revenue, recorded as a separate reversal so the original Sale is never edited
 - Per-line discounts and configurable sales tax (SST), with the rate and label snapshotted onto each Sale
 - One immutable Invoice per completed Sale with a tax breakdown and print-friendly browser output
 - Dashboard and Reports for revenue, gross margin, Sales, inventory health, Customers, and Invoice coverage
@@ -82,7 +84,7 @@ Dashboard and Reports support Today, the last 7 days, and the last 30 days using
 
 ## Testing and CI
 
-The project has **372 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, gross-margin reporting, login lockout, CSV security, production settings, and health checks.
+The project has **387 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, gross-margin reporting, login lockout, CSV security, production settings, and health checks.
 
 GitHub Actions runs the suite against a real PostgreSQL service and separately validates the production configuration. Local verification uses the same checks:
 

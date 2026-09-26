@@ -4,10 +4,10 @@ from django.conf import settings
 from django.db import transaction
 
 from customers.models import Customer
-from inventory.services import InventoryOperationError, stock_out
+from inventory.services import InventoryOperationError, stock_in, stock_out
 from products.models import Product
 
-from .models import Sale, SaleItem
+from .models import PaymentMethod, Sale, SaleItem, SaleReversal
 
 
 MAX_SALE_TOTAL = Decimal("9999999999999999999999.99")
@@ -15,6 +15,33 @@ MAX_SALE_TOTAL = Decimal("9999999999999999999999.99")
 
 class SalesOperationError(Exception):
     """Raised when a Sale cannot be completed without violating a rule."""
+
+
+def _resolve_payment(payment_method, amount_tendered, total_amount):
+    """Validate the payment and work out the change.
+
+    Tendered and change are only meaningful for cash. Card and e-wallet take
+    the exact amount, so recording a tendered figure there would invent a cash
+    drawer movement that never happened.
+    """
+    if payment_method and payment_method not in PaymentMethod.values:
+        raise SalesOperationError("Unknown payment method")
+
+    if payment_method != PaymentMethod.CASH:
+        return None, None
+    if amount_tendered is None:
+        return None, None
+
+    try:
+        tendered = Decimal(amount_tendered).quantize(Decimal("0.01"))
+    except (ArithmeticError, TypeError, ValueError) as exc:
+        raise SalesOperationError("Amount tendered must be an amount") from exc
+    if tendered < total_amount:
+        raise SalesOperationError(
+            f"Amount tendered of {tendered} does not cover the "
+            f"{total_amount} total."
+        )
+    return tendered, tendered - total_amount
 
 
 def _configured_tax_rate():
@@ -77,7 +104,14 @@ def _normalize_items(items):
 
 
 @transaction.atomic
-def create_sale(*, customer_id, items, created_by):
+def create_sale(
+    *,
+    customer_id,
+    items,
+    created_by,
+    payment_method="",
+    amount_tendered=None,
+):
     normalized_items = _normalize_items(items)
 
     customer = None
@@ -148,6 +182,10 @@ def create_sale(*, customer_id, items, created_by):
     if total_amount > MAX_SALE_TOTAL:
         raise SalesOperationError("Sale total exceeds the supported maximum")
 
+    tendered, change = _resolve_payment(
+        payment_method, amount_tendered, total_amount
+    )
+
     sale = Sale.objects.create(
         customer=customer,
         customer_name=customer.name if customer else "",
@@ -156,6 +194,9 @@ def create_sale(*, customer_id, items, created_by):
         tax_rate=tax_rate,
         tax_amount=tax_amount,
         tax_label=getattr(settings, "SALES_TAX_LABEL", "SST") if tax_rate else "",
+        payment_method=payment_method or "",
+        amount_tendered=tendered,
+        change_given=change,
         total_amount=total_amount,
         created_by=created_by,
     )
@@ -187,3 +228,59 @@ def create_sale(*, customer_id, items, created_by):
         )
 
     return sale
+
+
+@transaction.atomic
+def void_sale(*, sale_id, reason, voided_by):
+    """Reverse a completed Sale, returning its stock.
+
+    The Sale is not edited or deleted. A SaleReversal is recorded against it
+    and the stock goes back, so the till record of what was rung up survives
+    exactly as it was while the goods and the revenue are undone.
+    """
+    normalized_reason = (reason or "").strip()
+    if not normalized_reason:
+        raise SalesOperationError("A reason is required to void a Sale")
+
+    try:
+        sale = (
+            Sale.objects.select_for_update()
+            .prefetch_related("items__product")
+            .get(pk=sale_id)
+        )
+    except Sale.DoesNotExist as exc:
+        raise SalesOperationError("Sale is not available") from exc
+
+    if hasattr(sale, "reversal"):
+        raise SalesOperationError(f"{sale.sale_number} has already been voided")
+
+    # An issued Invoice is a document the customer already holds. Undoing the
+    # Sale behind it would leave that document describing a Sale that no
+    # longer counts, so it needs a credit note rather than a void.
+    if hasattr(sale, "invoice"):
+        raise SalesOperationError(
+            f"{sale.sale_number} has an issued Invoice and cannot be voided. "
+            "Issue a credit note instead."
+        )
+
+    reversal = SaleReversal.objects.create(
+        sale=sale,
+        reason=normalized_reason,
+        created_by=voided_by,
+    )
+
+    for item in sale.items.all():
+        try:
+            stock_in(
+                product_id=item.product_id,
+                quantity=item.quantity,
+                performed_by=voided_by,
+                reason=f"Void of {sale.sale_number}",
+                # The Product may have been deactivated since it was sold;
+                # the goods still come back.
+                allow_inactive=True,
+            )
+        except InventoryOperationError as exc:
+            raise SalesOperationError(str(exc)) from exc
+
+    return reversal

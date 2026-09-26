@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Void {{ sale.sale_number }} | SME Manager{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a class="small text-decoration-none" href="{% url 'sales:detail' sale.pk %}">&larr; Back to {{ sale.sale_number }}</a>
+    <h1 class="h2 mt-2 mb-1">Void {{ sale.sale_number }}</h1>
+    <p class="text-secondary mb-0">The Sale record is kept. Its stock goes back and it stops counting towards revenue.</p>
+</div>
+
+<div class="alert alert-warning" role="alert">
+    <strong>This cannot be undone.</strong>
+    Voiding returns {{ sale.items.count }} line{{ sale.items.count|pluralize }} of stock and removes
+    RM {{ sale.total_amount|floatformat:2 }} from takings.
+</div>
+
+<form method="post" class="card border-0 shadow-sm" novalidate>
+    {% csrf_token %}
+    <div class="card-body p-4">
+        {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        <label class="form-label" for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
+        {{ form.reason }}
+        <div class="form-text">{{ form.reason.help_text }}</div>
+        {% for error in form.reason.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="card-footer bg-white d-flex justify-content-end gap-2 py-3">
+        <a class="btn btn-outline-secondary" href="{% url 'sales:detail' sale.pk %}">Cancel</a>
+        <button class="btn btn-danger" type="submit">Void this Sale</button>
+    </div>
+</form>
+{% endblock %}

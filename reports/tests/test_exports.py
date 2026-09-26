@@ -72,7 +72,7 @@ class ReportExportTests(TestCase):
         row = self.rows(self.client.get(reverse("reports:sales_csv"), {"period": "today"}))[1]
 
         self.assertEqual(row[2], "'=SUM(A1:A2)")
-        self.assertEqual(row[10], "'@staff-export")
+        self.assertEqual(row[11], "'@staff-export")
 
     def test_inventory_csv_sanitizes_text_without_corrupting_numeric_cells(self):
         movement = StockMovement.objects.create(
