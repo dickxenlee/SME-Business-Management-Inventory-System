@@ -44,6 +44,13 @@ Set these in the hosting platform's secret-variable interface. Never commit real
 | `DB_SSLMODE` | Required secure mode: `require`, `verify-ca`, or `verify-full`; prefer `verify-full` when certificates and host verification are configured |
 | `DB_CONNECT_TIMEOUT` | Initial value `5` |
 | `DB_CONN_MAX_AGE` | Initial value `60`; reduce it if database connection limits require it |
+| `EMAIL_HOST` | SMTP host. Leave blank to switch password reset off; staff then depend on an owner setting passwords |
+| `EMAIL_PORT` | Normally `587` |
+| `EMAIL_HOST_USER` | SMTP username |
+| `EMAIL_HOST_PASSWORD` | SMTP password |
+| `EMAIL_USE_TLS` | Keep `True` |
+| `DEFAULT_FROM_EMAIL` | Required once `EMAIL_HOST` is set; the address reset emails come from |
+| `PASSWORD_RESET_TIMEOUT_SECONDS` | Reset link lifetime, normally `3600` |
 | `SALES_TAX_RATE` | Sales tax percentage, e.g. `6`. Keep `0` unless the business is SST registered |
 | `SALES_TAX_LABEL` | Name shown on documents for that tax, normally `SST` |
 | `INVOICE_SELLER_NAME` | Real legal or trading name shown on newly issued Invoices |
