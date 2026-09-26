@@ -25,6 +25,7 @@ class InvoiceSearchPaginationTests(TestCase):
             sale = Sale.objects.create(
                 customer_name=f"Customer {number:03d}",
                 customer_address="",
+                net_amount=Decimal("10.00"),
                 total_amount=Decimal("10.00"),
                 created_by=cls.staff_user,
             )
@@ -35,6 +36,7 @@ class InvoiceSearchPaginationTests(TestCase):
                     customer_address="",
                     seller_name="Search SME",
                     seller_address="Search Address",
+                    net_amount=sale.total_amount,
                     total_amount=sale.total_amount,
                     issued_by=cls.staff_user,
                 )
@@ -43,6 +45,7 @@ class InvoiceSearchPaginationTests(TestCase):
         special_sale = Sale.objects.create(
             customer_name="Kedai Maju",
             customer_address="",
+            net_amount=Decimal("20.00"),
             total_amount=Decimal("20.00"),
             created_by=cls.staff_user,
         )
@@ -52,6 +55,7 @@ class InvoiceSearchPaginationTests(TestCase):
             customer_address="",
             seller_name="Search SME",
             seller_address="Search Address",
+            net_amount=special_sale.total_amount,
             total_amount=special_sale.total_amount,
             issued_by=cls.staff_user,
         )

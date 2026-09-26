@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.conf import settings
 from django.contrib import messages
 from django.db.models import Q
 from django.shortcuts import redirect, render
@@ -86,6 +87,7 @@ class SaleCreateView(SalesAccessMixin, View):
                 {
                     "product_id": form.cleaned_data["product"].pk,
                     "quantity": form.cleaned_data["quantity"],
+                    "discount_amount": form.cleaned_data.get("discount_amount"),
                 }
                 for form in item_formset.forms
                 if form.cleaned_data
@@ -114,5 +116,9 @@ class SaleCreateView(SalesAccessMixin, View):
                 "form": sale_form,
                 "item_formset": item_formset,
                 "sale_error": sale_error,
+                # The form previews tax so staff can read the real total back
+                # to the customer; the Sale itself is priced on the server.
+                "sales_tax_rate": getattr(settings, "SALES_TAX_RATE", 0),
+                "sales_tax_label": getattr(settings, "SALES_TAX_LABEL", "SST"),
             },
         )

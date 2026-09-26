@@ -100,3 +100,38 @@ class GrossMarginTests(TestCase):
 
         self.assertEqual(margin["gross_profit"], Decimal("60.00"))
         self.assertEqual(margin["margin_rate"], Decimal("60.00"))
+
+
+@override_settings(TIME_ZONE="Asia/Kuala_Lumpur", USE_TZ=True)
+class TaxIsNotRevenueTests(TestCase):
+    """Tax is collected for the government, so it must never read as income."""
+
+    @classmethod
+    def setUpTestData(cls):
+        group, _ = Group.objects.get_or_create(name="Staff")
+        cls.user = get_user_model().objects.create_user(username="tax-report")
+        cls.user.groups.add(group)
+        cls.product = Product.objects.create(
+            sku="TAXREP-1",
+            name="Taxed Report Product",
+            selling_price=Decimal("100.00"),
+            cost_price=Decimal("60.00"),
+            current_stock=100,
+        )
+
+    def test_revenue_and_margin_exclude_collected_tax(self):
+        # RM100 of goods with RM6 tax: the shop earned 100, not 106.
+        create_sale(
+            user=self.user, at=days_ago(1),
+            items=[(self.product, 1, "100.00")],
+            tax_rate=6,
+        )
+
+        report = get_sales_report(resolve_period("30d"))
+
+        self.assertEqual(report["revenue"], Decimal("100.00"))
+        self.assertEqual(report["tax_collected"], Decimal("6.00"))
+        self.assertEqual(report["average_sale"], Decimal("100.00"))
+        # Gross profit is 100 - 60, not 106 - 60.
+        self.assertEqual(report["margin"]["gross_profit"], Decimal("40.00"))
+        self.assertEqual(report["margin"]["margin_rate"], Decimal("40.00"))

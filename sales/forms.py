@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import BaseFormSet, formset_factory
@@ -63,6 +65,16 @@ class SaleItemForm(forms.Form):
         widget=ProductSelect,
     )
     quantity = forms.IntegerField(min_value=1, max_value=MAX_STOCK_QUANTITY)
+    discount_amount = forms.DecimalField(
+        required=False,
+        min_value=Decimal("0.00"),
+        decimal_places=2,
+        max_digits=24,
+        # No initial: a value here would make a blank row read as "changed" to
+        # has_changed(), which stops the formset counting it as empty and
+        # silently disables the validate_min "add at least one item" check.
+        label="Discount (RM)",
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -73,11 +85,22 @@ class SaleItemForm(forms.Form):
         self.fields["quantity"].widget.attrs.update(
             {"class": "form-control", "inputmode": "numeric", "min": 1}
         )
+        self.fields["discount_amount"].widget.attrs.update(
+            {
+                "class": "form-control",
+                "inputmode": "decimal",
+                "min": "0",
+                "step": "0.01",
+                "placeholder": "0.00",
+            }
+        )
 
     def clean(self):
         cleaned = super().clean()
         product = cleaned.get("product")
         quantity = cleaned.get("quantity")
+        discount = cleaned.get("discount_amount") or Decimal("0.00")
+        cleaned["discount_amount"] = discount
         # Catch the stock problem on the offending field rather than letting it
         # surface as a whole-form banner naming only a SKU.
         if product is not None and quantity is not None:
@@ -90,6 +113,12 @@ class SaleItemForm(forms.Form):
                 self.add_error(
                     "quantity",
                     f"Only {product.current_stock} left of {product.name}.",
+                )
+            line_total = product.selling_price * quantity
+            if discount > line_total:
+                self.add_error(
+                    "discount_amount",
+                    f"Discount cannot exceed the RM {line_total:.2f} line total.",
                 )
         return cleaned
 

@@ -87,7 +87,7 @@ def _daily_revenue(period):
         _sales_in_period(period)
         .annotate(day=TruncDate("created_at", tzinfo=timezone.get_current_timezone()))
         .values("day")
-        .annotate(revenue=Coalesce(Sum("total_amount"), ZERO_MONEY))
+        .annotate(revenue=Coalesce(Sum("net_amount"), ZERO_MONEY))
         .order_by("day")
     )
     by_date = {row["day"]: row["revenue"] for row in rows}
@@ -105,9 +105,10 @@ def _daily_revenue(period):
 
 def _sales_summary(period):
     return _sales_in_period(period).aggregate(
-        revenue=Coalesce(Sum("total_amount"), ZERO_MONEY),
+        revenue=Coalesce(Sum("net_amount"), ZERO_MONEY),
         sale_count=Count("pk"),
-        average_sale=Coalesce(Avg("total_amount"), ZERO_MONEY),
+        average_sale=Coalesce(Avg("net_amount"), ZERO_MONEY),
+        tax_collected=Coalesce(Sum("tax_amount"), ZERO_MONEY),
         invoiced_sales=Count("pk", filter=Q(invoice__isnull=False)),
         walk_in_count=Count("pk", filter=Q(customer__isnull=True)),
     )

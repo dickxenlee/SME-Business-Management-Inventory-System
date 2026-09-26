@@ -15,6 +15,29 @@ class Invoice(models.Model):
     customer_address = models.TextField(blank=True)
     seller_name = models.CharField(max_length=255)
     seller_address = models.TextField()
+    # Copied from the Sale so the document keeps the figures it was issued
+    # with, whatever the tax rate becomes later.
+    net_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    tax_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    # Snapshotted with the rate: Malaysia moved from GST to SST in 2018, and a
+    # document reissued under a new label would misstate what was charged.
+    tax_label = models.CharField(max_length=20, blank=True)
     total_amount = models.DecimalField(
         max_digits=24,
         decimal_places=2,
@@ -35,6 +58,20 @@ class Invoice(models.Model):
             models.CheckConstraint(
                 condition=models.Q(total_amount__gte=0),
                 name="invoice_total_amount_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(net_amount__gte=0),
+                name="invoice_net_amount_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(tax_amount__gte=0),
+                name="invoice_tax_amount_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    total_amount=models.F("net_amount") + models.F("tax_amount")
+                ),
+                name="invoice_total_is_net_plus_tax",
             )
         ]
 
@@ -60,6 +97,12 @@ class InvoiceItem(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.00"))],
     )
+    discount_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
     subtotal = models.DecimalField(
         max_digits=24,
         decimal_places=2,
@@ -80,6 +123,10 @@ class InvoiceItem(models.Model):
             models.CheckConstraint(
                 condition=models.Q(subtotal__gte=0),
                 name="invoice_item_subtotal_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(discount_amount__gte=0),
+                name="invoice_item_discount_nonnegative",
             ),
         ]
 

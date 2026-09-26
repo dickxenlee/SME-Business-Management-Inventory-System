@@ -43,6 +43,7 @@
                     <th scope="col">Description</th>
                     <th scope="col" class="text-end">Quantity</th>
                     <th scope="col" class="text-end">Unit price</th>
+                    <th scope="col" class="text-end">Discount</th>
                     <th scope="col" class="text-end">Subtotal</th>
                 </tr>
             </thead>
@@ -53,13 +54,24 @@
                         <td>{{ item.product_name }}</td>
                         <td class="text-end">{{ item.quantity }}</td>
                         <td class="text-end">RM {{ item.unit_price|floatformat:2 }}</td>
+                        <td class="text-end">{% if item.discount_amount %}&minus;RM {{ item.discount_amount|floatformat:2 }}{% else %}&mdash;{% endif %}</td>
                         <td class="text-end">RM {{ item.subtotal|floatformat:2 }}</td>
                     </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
                 <tr>
-                    <th class="text-end" colspan="4" scope="row">Total</th>
+                    <th class="text-end fw-normal" colspan="5" scope="row">Subtotal</th>
+                    <td class="text-end">RM {{ invoice.net_amount|floatformat:2 }}</td>
+                </tr>
+                {% if invoice.tax_amount %}
+                    <tr>
+                        <th class="text-end fw-normal" colspan="5" scope="row">{{ invoice.tax_label|default:"Tax" }} @ {{ invoice.tax_rate|floatformat:2 }}%</th>
+                        <td class="text-end">RM {{ invoice.tax_amount|floatformat:2 }}</td>
+                    </tr>
+                {% endif %}
+                <tr>
+                    <th class="text-end" colspan="5" scope="row">Total</th>
                     <th class="text-end invoice-total">RM {{ invoice.total_amount|floatformat:2 }}</th>
                 </tr>
             </tfoot>

@@ -49,6 +49,7 @@ class InvoiceModelDatabaseTests(TestCase):
         self.sale = Sale.objects.create(
             customer_name="Model Customer",
             customer_address="Model Address",
+            net_amount=Decimal("25.00"),
             total_amount=Decimal("25.00"),
             created_by=self.user,
         )
@@ -64,6 +65,8 @@ class InvoiceModelDatabaseTests(TestCase):
             "issued_by": self.user,
         }
         values.update(overrides)
+        # Untaxed fixture, so net mirrors the total the caller asked for.
+        values.setdefault("net_amount", values["total_amount"])
         return models.Invoice.objects.create(**values)
 
     def test_invoice_number_is_derived_from_primary_key(self):
