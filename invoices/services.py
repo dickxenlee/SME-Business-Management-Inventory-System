@@ -7,7 +7,9 @@ from django.db import transaction
 
 from sales.models import Sale
 
-from .models import Invoice, InvoiceItem
+from inventory.services import InventoryOperationError, stock_in
+
+from .models import CreditNote, CreditNoteItem, Invoice, InvoiceItem
 
 
 class InvoiceOperationError(Exception):
@@ -90,3 +92,88 @@ def issue_invoice(*, sale_id, issued_by):
         ]
     )
     return invoice
+
+
+class CreditNoteOperationError(Exception):
+    """Raised when a credit note cannot be issued safely."""
+
+
+@transaction.atomic
+def issue_credit_note(*, invoice_id, reason, issued_by):
+    """Cancel an issued Invoice with a credit note and return the stock.
+
+    The Invoice and the Sale behind it are left exactly as they are. The
+    customer already holds that Invoice, so the correction is its own numbered
+    document rather than an edit to a document that is out in the world.
+    """
+    normalized_reason = (reason or "").strip()
+    if not normalized_reason:
+        raise CreditNoteOperationError(
+            "A reason is required to issue a credit note"
+        )
+
+    try:
+        invoice = (
+            Invoice.objects.select_for_update()
+            .select_related("sale")
+            .prefetch_related("items")
+            .get(pk=invoice_id)
+        )
+    except Invoice.DoesNotExist as exc:
+        raise CreditNoteOperationError("Invoice is not available") from exc
+
+    if hasattr(invoice, "credit_note"):
+        raise CreditNoteOperationError(
+            f"{invoice.invoice_number} has already been credited"
+        )
+
+    sale_items = list(invoice.sale.items.select_related("product"))
+    if not sale_items:
+        raise CreditNoteOperationError(
+            "The Sale behind this Invoice has no items to return"
+        )
+
+    credit_note = CreditNote.objects.create(
+        invoice=invoice,
+        reason=normalized_reason,
+        customer_name=invoice.customer_name,
+        customer_address=invoice.customer_address,
+        seller_name=invoice.seller_name,
+        seller_address=invoice.seller_address,
+        net_amount=invoice.net_amount,
+        tax_rate=invoice.tax_rate,
+        tax_amount=invoice.tax_amount,
+        tax_label=invoice.tax_label,
+        total_amount=invoice.total_amount,
+        issued_by=issued_by,
+    )
+    CreditNoteItem.objects.bulk_create(
+        [
+            CreditNoteItem(
+                credit_note=credit_note,
+                product_sku=item.product_sku,
+                product_name=item.product_name,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                discount_amount=item.discount_amount,
+                subtotal=item.subtotal,
+            )
+            for item in invoice.items.all()
+        ]
+    )
+
+    for item in sale_items:
+        try:
+            stock_in(
+                product_id=item.product_id,
+                quantity=item.quantity,
+                performed_by=issued_by,
+                reason=f"Credit note for {invoice.invoice_number}",
+                # The Product may have been discontinued since it was sold;
+                # the goods still come back.
+                allow_inactive=True,
+            )
+        except InventoryOperationError as exc:
+            raise CreditNoteOperationError(str(exc)) from exc
+
+    return credit_note

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Credit {{ invoice.invoice_number }} | SME Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="mb-4">
+            <a class="small text-decoration-none" href="{% url 'invoices:detail' invoice.pk %}">&larr; Back to {{ invoice.invoice_number }}</a>
+            <h1 class="h2 mt-2 mb-1">Credit {{ invoice.invoice_number }}</h1>
+            <p class="text-secondary mb-0">Issues a numbered credit note cancelling this Invoice and returns the stock.</p>
+        </div>
+
+        <div class="alert alert-warning" role="alert">
+            <strong>This cannot be undone.</strong>
+            The Invoice stays on file because the customer holds a copy. A credit note
+            of RM {{ invoice.total_amount|floatformat:2 }} is issued against it, the goods come back
+            into stock, and the Sale stops counting towards revenue.
+        </div>
+
+        <form method="post" class="card border-0 shadow-sm" novalidate>
+            {% csrf_token %}
+            <div class="card-body p-4">
+                {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+                <label class="form-label" for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
+                {{ form.reason }}
+                <div class="form-text">{{ form.reason.help_text }}</div>
+                {% for error in form.reason.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="card-footer bg-white d-flex justify-content-end gap-2 py-3">
+                <a class="btn btn-outline-secondary" href="{% url 'invoices:detail' invoice.pk %}">Cancel</a>
+                <button class="btn btn-danger" type="submit">Issue credit note</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -558,3 +558,9 @@ body {
         width: auto;
     }
 }
+
+/* A credit note is the opposite of an invoice and must never be mistaken for
+   one at a glance, on screen or on paper. */
+.credit-note-document {
+    --invoice-accent: #b02a37;
+}

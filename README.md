@@ -19,6 +19,7 @@ This is a portfolio and staging implementation. It does not claim commercial pro
 - Sale voiding that returns stock and leaves revenue, recorded as a separate reversal so the original Sale is never edited
 - Per-line discounts and configurable sales tax (SST), with the rate and label snapshotted onto each Sale
 - One immutable Invoice per completed Sale with a tax breakdown and print-friendly browser output
+- Numbered credit notes that cancel an issued Invoice, return the stock and credit the tax, without editing the document the customer holds
 - Dashboard and Reports for revenue, gross margin, Sales, inventory health, Customers, and Invoice coverage
 - Secure CSV exports for Sales and Inventory Movements
 - PostgreSQL-backed automated tests, GitHub Actions CI, health checks, and recovery documentation
@@ -85,7 +86,7 @@ Dashboard and Reports support Today, the last 7 days, and the last 30 days using
 
 ## Testing and CI
 
-The project has **405 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, gross-margin reporting, login lockout, CSV security, production settings, and health checks.
+The project has **422 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, gross-margin reporting, login lockout, CSV security, production settings, and health checks.
 
 GitHub Actions runs the suite against a real PostgreSQL service and separately validates the production configuration. Local verification uses the same checks:
 

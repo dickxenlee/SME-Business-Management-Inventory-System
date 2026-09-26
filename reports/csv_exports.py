@@ -43,11 +43,12 @@ def _stream_csv(*, rows, header, filename):
 
 def sales_csv_response(period):
     queryset = (
-        Sale.objects.filter(
+        # Voided or credited Sales went back; exporting them would overstate
+        # takings.
+        Sale.objects.not_cancelled()
+        .filter(
             created_at__gte=period.start_at,
             created_at__lt=period.end_at,
-            # Voided Sales went back; exporting them would overstate takings.
-            reversal__isnull=True,
         )
         .select_related("created_by", "invoice")
         .annotate(
