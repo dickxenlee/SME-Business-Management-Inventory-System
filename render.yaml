@@ -33,8 +33,13 @@ services:
         value: "3.11"
       - key: DJANGO_ENVIRONMENT
         value: production
+      # Not generateValue: Render's generated secret is shorter than the
+      # 50 characters settings.py requires in production, so the blueprint
+      # would hand the app a key it then refuses to start with. Generate one
+      # locally instead:
+      #   python -c "import secrets; print(secrets.token_urlsafe(64))"
       - key: DJANGO_SECRET_KEY
-        generateValue: true
+        sync: false
       - key: DJANGO_LOG_LEVEL
         value: INFO
       # Render terminates TLS at its edge and overwrites X-Forwarded-Proto.

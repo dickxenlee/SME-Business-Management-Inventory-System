@@ -159,6 +159,19 @@ python manage.py seed_demo --only-if-empty --allow-production
 `--only-if-empty` makes that safe to leave in place: it seeds a fresh database
 and leaves an established one untouched, so a redeploy never destroys data.
 
+### The secret key
+
+Generate it locally and paste it into the platform's own settings:
+
+```sh
+python -c "import secrets; print(secrets.token_urlsafe(64))"
+```
+
+Render can generate a value for a variable, but its generated secret is
+shorter than the 50 characters this project requires in production. Letting
+the platform fill this in produces a key the application then refuses to start
+with, so `render.yaml` asks for it rather than generating it.
+
 ### Mapping a Neon connection string
 
 Neon issues one connection string; this project reads the parts separately.
