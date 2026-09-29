@@ -5,6 +5,7 @@ the public demo and see a shop that has been trading, rather than a set of
 empty tables with nothing to click.
 """
 
+import os
 import random
 from datetime import timedelta
 from decimal import Decimal
@@ -69,6 +70,14 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
+            "--only-if-empty",
+            action="store_true",
+            help=(
+                "Do nothing if the database already holds data. Safe to leave "
+                "in a build command that runs on every deploy."
+            ),
+        )
+        parser.add_argument(
             "--allow-production",
             action="store_true",
             help=(
@@ -86,6 +95,12 @@ class Command(BaseCommand):
             )
 
         existing = Sale.objects.exists() or Product.objects.exists()
+        # Hosts without a shell can only seed from the build command, which
+        # reruns on every deploy. This makes that safe: seed a fresh database,
+        # leave an established one alone.
+        if existing and options["only_if_empty"]:
+            self.stdout.write("Database already has data; leaving it alone.")
+            return
         if existing and not options["reset"]:
             raise CommandError(
                 "This database already holds Products or Sales. Re-run with "
@@ -95,6 +110,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             if options["reset"]:
                 self._wipe()
+            self._owner_if_requested()
             user = self._demo_user()
             products = self._products(user)
             customers = self._customers()
@@ -122,6 +138,35 @@ class Command(BaseCommand):
         Product.objects.all().delete()
         Customer.objects.all().delete()
         self.stdout.write("  Cleared existing records.")
+
+    def _owner_if_requested(self):
+        """Create the first owner from the environment, for hosts with no shell.
+
+        A platform whose free tier has no shell gives no other way to run
+        createsuperuser, so the credentials have to arrive as configuration.
+        This is a concession for a public demo: on a deployment holding real
+        records, create the owner interactively and leave these unset.
+        """
+        username = os.environ.get("DEMO_OWNER_USERNAME", "").strip()
+        password = os.environ.get("DEMO_OWNER_PASSWORD", "")
+        if not username or not password:
+            return
+
+        user_model = get_user_model()
+        owner, created = user_model.objects.get_or_create(
+            username=username,
+            defaults={"email": os.environ.get("DEMO_OWNER_EMAIL", "").strip()},
+        )
+        if not created:
+            # Never silently reset a password that somebody may have changed.
+            self.stdout.write(f"  Owner {username} already exists; left as is.")
+            return
+        owner.is_staff = True
+        owner.is_superuser = True
+        owner.is_active = True
+        owner.set_password(password)
+        owner.save()
+        self.stdout.write(f"  Created owner {username}.")
 
     def _demo_user(self):
         """A Staff account, not an owner.
