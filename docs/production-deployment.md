@@ -132,6 +132,24 @@ The endpoint returns HTTP 200 only when Django can perform a minimal PostgreSQL 
 
 7. Do not automate or commit administrator credentials.
 
+## Seeding the public demo
+
+The staging demo runs with `DJANGO_ENVIRONMENT=production`, so the seeder
+refuses to touch it without an explicit flag:
+
+```sh
+python manage.py seed_demo --reset --allow-production
+```
+
+`--reset` deletes every Product, Customer, Sale, Invoice, credit note and
+stock movement before rebuilding them. Both flags are required on the demo,
+and the production guard is checked before anything is deleted. Never run this
+against a database holding real trading records.
+
+It creates a `demo` account in the Staff group with a published password. That
+account cannot void, credit, manage staff or reach Django admin, so a visitor
+can exercise the shop without destroying the data for the next one.
+
 ## Smoke test
 
 Verify through the public HTTPS URL:
