@@ -1,5 +1,7 @@
+import os
 from decimal import Decimal
 from io import StringIO
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -173,3 +175,84 @@ class SeedDemoResetTests(TestCase):
         seed(reset=True)
 
         self.assertEqual(Product.objects.count(), 10)
+
+
+class SeedDemoOnlyIfEmptyTests(TestCase):
+    """Hosts with no shell can only seed from a build command that reruns."""
+
+    def test_it_seeds_an_empty_database(self):
+        seed(only_if_empty=True)
+
+        self.assertEqual(Product.objects.count(), 10)
+
+    def test_it_leaves_an_established_database_alone(self):
+        seed()
+        sale_count = Sale.objects.count()
+        Customer.objects.create(name="Added by a real user")
+
+        output = seed(only_if_empty=True)
+
+        self.assertIn("leaving it alone", output)
+        self.assertEqual(Sale.objects.count(), sale_count)
+        self.assertTrue(
+            Customer.objects.filter(name="Added by a real user").exists()
+        )
+
+    def test_it_still_refuses_production_without_the_flag(self):
+        with override_settings(IS_PRODUCTION=True):
+            with self.assertRaisesMessage(CommandError, "production"):
+                seed(only_if_empty=True)
+
+
+class SeedDemoOwnerTests(TestCase):
+    """createsuperuser needs a shell, which a free instance does not have."""
+
+    def test_no_owner_is_created_without_the_environment_variables(self):
+        seed()
+
+        self.assertFalse(
+            get_user_model().objects.filter(is_superuser=True).exists()
+        )
+
+    def test_an_owner_is_created_from_the_environment(self):
+        with patch.dict(
+            os.environ,
+            {
+                "DEMO_OWNER_USERNAME": "shopowner",
+                "DEMO_OWNER_PASSWORD": "owner-pass-8812",
+                "DEMO_OWNER_EMAIL": "owner@example.com",
+            },
+        ):
+            seed()
+
+        owner = get_user_model().objects.get(username="shopowner")
+        self.assertTrue(owner.is_superuser)
+        self.assertTrue(owner.is_staff)
+        self.assertEqual(owner.email, "owner@example.com")
+
+    def test_an_existing_owner_password_is_never_overwritten(self):
+        """A redeploy must not silently reset a password somebody changed."""
+        existing = get_user_model().objects.create_superuser(
+            username="shopowner", password="the-password-i-chose"
+        )
+
+        with patch.dict(
+            os.environ,
+            {
+                "DEMO_OWNER_USERNAME": "shopowner",
+                "DEMO_OWNER_PASSWORD": "whatever-is-in-the-config",
+            },
+        ):
+            output = seed()
+
+        existing.refresh_from_db()
+        self.assertTrue(existing.check_password("the-password-i-chose"))
+        self.assertIn("already exists", output)
+
+    def test_a_username_without_a_password_creates_nothing(self):
+        with patch.dict(os.environ, {"DEMO_OWNER_USERNAME": "shopowner"}):
+            seed()
+
+        self.assertFalse(
+            get_user_model().objects.filter(username="shopowner").exists()
+        )

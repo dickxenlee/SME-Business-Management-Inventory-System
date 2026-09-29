@@ -1,0 +1,80 @@
+# Render blueprint for the public demo.
+#
+# Render's free instances have no pre-deploy step and no shell, so migrations
+# and seeding run inside the build command. seed_demo uses --only-if-empty so
+# a redeploy never destroys what is already there.
+#
+# The database is deliberately NOT declared here. Render's own free Postgres
+# expires 30 days after creation and is then deleted, which would take the
+# demo with it. Point DB_* at an external provider with a permanent free tier
+# instead, and set those values in the Render dashboard.
+services:
+  - type: web
+    name: sme-manager
+    runtime: python
+    plan: free
+    region: singapore
+    branch: master
+    buildCommand: >-
+      python -m pip install -r requirements.txt &&
+      python manage.py collectstatic --noinput &&
+      python manage.py migrate &&
+      python manage.py seed_demo --only-if-empty --allow-production
+    startCommand: >-
+      gunicorn sme_manager.wsgi:application
+      --bind 0.0.0.0:$PORT
+      --workers 2
+      --timeout 60
+      --access-logfile -
+      --error-logfile -
+    healthCheckPath: /health/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: DJANGO_ENVIRONMENT
+        value: production
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_LOG_LEVEL
+        value: INFO
+      # Render terminates TLS at its edge and overwrites X-Forwarded-Proto.
+      - key: DJANGO_TRUST_PROXY_SSL_HEADER
+        value: "True"
+      # Raise to 3600 once HTTPS and the redirect have been verified.
+      - key: DJANGO_SECURE_HSTS_SECONDS
+        value: "0"
+      # Neon and most managed providers require TLS.
+      - key: DB_SSLMODE
+        value: require
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_CONNECT_TIMEOUT
+        value: "5"
+      # Free instances sleep, so a pooled connection is usually dead on wake.
+      - key: DB_CONN_MAX_AGE
+        value: "0"
+      - key: SALES_TAX_RATE
+        value: "0"
+      # Set these in the dashboard, not here: they are either secret or
+      # specific to your database and hostname.
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: INVOICE_SELLER_NAME
+        sync: false
+      - key: INVOICE_SELLER_ADDRESS
+        sync: false
+      # Only because a free instance has no shell to run createsuperuser in.
+      - key: DEMO_OWNER_USERNAME
+        sync: false
+      - key: DEMO_OWNER_PASSWORD
+        sync: false

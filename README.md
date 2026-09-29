@@ -12,7 +12,7 @@ A Django and PostgreSQL business system for managing products, stock, customers,
 |---|---|
 | `demo` | `demo-shop-2026` |
 
-The demo is seeded with a month of trading: products at healthy, low and zero stock, named and walk-in Sales across cash, card, e-wallet and transfer, issued Invoices, one voided Sale and one credit note. Switch the reporting period between Today, 7 days and 30 days to see the figures move.
+The demo runs on a free instance that sleeps when idle, so the first page can take up to a minute to wake. It is seeded with a month of trading: products at healthy, low and zero stock, named and walk-in Sales across cash, card, e-wallet and transfer, issued Invoices, one voided Sale and one credit note. Switch the reporting period between Today, 7 days and 30 days to see the figures move.
 
 The account can run the shop — record Sales, move stock, manage Products and Customers, issue Invoices — but voiding, crediting, account management and Django admin stay owner-only, so it cannot be broken for the next visitor. The data resets on demand.
 

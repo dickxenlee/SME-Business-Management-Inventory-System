@@ -132,6 +132,65 @@ The endpoint returns HTTP 200 only when Django can perform a minimal PostgreSQL 
 
 7. Do not automate or commit administrator credentials.
 
+## Deploying the demo on a free tier
+
+Railway is the recommended target when a paid instance is available. Where it
+is not, the demo runs on a free Render web service with an external database.
+`render.yaml` in the repository root describes the service.
+
+Two constraints drive the shape of this setup.
+
+**Render's own free PostgreSQL expires 30 days after it is created** and is
+deleted after a 14-day grace period, taking the demo with it. Use a provider
+whose free tier is permanent instead. Neon is the one this runbook was written
+against: 0.5 GB, no card, and it does not convert to a trial.
+
+**Free instances have no pre-deploy step and no shell.** There is nowhere to
+run `migrate`, `createsuperuser` or `seed_demo` by hand, so all three run
+inside the build command:
+
+```sh
+python -m pip install -r requirements.txt &&
+python manage.py collectstatic --noinput &&
+python manage.py migrate &&
+python manage.py seed_demo --only-if-empty --allow-production
+```
+
+`--only-if-empty` makes that safe to leave in place: it seeds a fresh database
+and leaves an established one untouched, so a redeploy never destroys data.
+
+### Mapping a Neon connection string
+
+Neon issues one connection string; this project reads the parts separately.
+
+```text
+postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require
+             ^^^^ ^^^^^^^^ ^^^^ ^^^^^^
+             DB_USER        DB_HOST
+                  DB_PASSWORD     DB_NAME
+```
+
+`DB_PORT` is `5432` and `DB_SSLMODE` is `require`. Set `DB_CONN_MAX_AGE=0`,
+because a free instance sleeps and a pooled connection is usually dead by the
+time it wakes.
+
+### The first owner account
+
+`createsuperuser` is interactive and there is no shell, so `seed_demo` will
+create the first owner from `DEMO_OWNER_USERNAME` and `DEMO_OWNER_PASSWORD`
+when both are set. It never touches an account that already exists, so a
+redeploy cannot reset a password somebody has changed.
+
+This is a concession to a platform limitation on a public demo. On a
+deployment holding real trading records, leave those variables unset and
+create the owner interactively, as described under First deployment.
+
+### What free costs you
+
+A free Render service sleeps when idle and takes roughly a minute to answer
+the first request afterwards. The database sleeps too. Say so next to the demo
+link rather than leaving a visitor staring at a blank page.
+
 ## Seeding the public demo
 
 The staging demo runs with `DJANGO_ENVIRONMENT=production`, so the seeder
