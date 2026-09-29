@@ -7,7 +7,7 @@ empty tables with nothing to click.
 
 import os
 import random
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -272,7 +272,7 @@ class Command(BaseCommand):
             if method == PaymentMethod.CASH:
                 self._record_cash(sale)
 
-            when = timezone.now() - timedelta(days=days_ago, hours=random.randint(0, 8))
+            when = self._moment_days_ago(days_ago)
             self._backdate(sale, when)
 
             # Named customers usually want a document; walk-ins usually do not.
@@ -282,6 +282,33 @@ class Command(BaseCommand):
                 invoiced.append(invoice)
 
         self._show_both_ways_of_undoing(user, invoiced)
+
+    def _moment_days_ago(self, days_ago):
+        """A time on the local calendar day that many days back.
+
+        The reporting periods are built from local calendar dates, so the
+        offset has to be applied to the local date rather than subtracted
+        from a UTC instant. Doing the latter puts a "today" Sale into
+        yesterday whenever the server clock is behind local midnight, which
+        leaves the Today period empty on a machine running in UTC.
+        """
+        local_now = timezone.localtime()
+        target = local_now.date() - timedelta(days=days_ago)
+        if days_ago == 0:
+            # Nothing in the future, and nothing before local midnight.
+            hour = random.randint(0, local_now.hour)
+            minute = (
+                random.randint(0, local_now.minute)
+                if hour == local_now.hour
+                else random.randint(0, 59)
+            )
+        else:
+            hour = random.randint(8, 20)
+            minute = random.randint(0, 59)
+        return timezone.make_aware(
+            datetime.combine(target, time(hour, minute)),
+            timezone.get_current_timezone(),
+        )
 
     def _record_cash(self, sale):
         """Round the tender up to a note, the way a customer actually pays."""
