@@ -1,0 +1,25 @@
+name: Reset demo
+
+# Redeploys the public demo once a day. The Render build command reseeds the
+# demo data on every deploy, so this puts back whatever visitors changed.
+# Does nothing until the RENDER_DEPLOY_HOOK_URL repository secret is set.
+on:
+  schedule:
+    - cron: "0 20 * * *" # 04:00 in Kuala Lumpur
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger a Render deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL is not set; nothing to do."
+            exit 0
+          fi
+          curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null

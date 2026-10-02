@@ -7,7 +7,9 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
+from core.demo import DEMO_PASSWORD
 from customers.models import Customer
 from invoices.models import CreditNote, Invoice
 from products.models import Product
@@ -90,7 +92,7 @@ class SeedDemoContentTests(TestCase):
 
     def test_the_demo_account_can_actually_sign_in(self):
         self.client.post(
-            "/accounts/login/", {"username": "demo", "password": "demo-shop-2026"}
+            "/accounts/login/", {"username": "demo", "password": DEMO_PASSWORD}
         )
 
         self.assertIn("_auth_user_id", self.client.session)
@@ -141,7 +143,7 @@ class SeedDemoContentTests(TestCase):
         output = seed(reset=True)
 
         self.assertIn("demo", output)
-        self.assertIn("demo-shop-2026", output)
+        self.assertIn(DEMO_PASSWORD, output)
 
 
 class SeedDemoResetTests(TestCase):
@@ -256,3 +258,34 @@ class SeedDemoOwnerTests(TestCase):
         self.assertFalse(
             get_user_model().objects.filter(username="shopowner").exists()
         )
+
+
+@override_settings(TIME_ZONE="Asia/Kuala_Lumpur", USE_TZ=True)
+class SeedDemoAcrossTheDateLineTests(TestCase):
+    """The reporting periods use local calendar dates, not UTC instants.
+
+    CI runs in UTC. When UTC is still on the previous day but Kuala Lumpur has
+    already rolled over, subtracting hours from a UTC "now" pushes a Sale
+    meant for today into yesterday, and the Today period renders empty.
+    """
+
+    def test_today_has_sales_just_after_local_midnight(self):
+        from reports.services import get_sales_report, resolve_period
+
+        # 16:20 UTC is 00:20 the next day in Kuala Lumpur: the window where
+        # the old arithmetic lost every one of today's Sales.
+        just_past_local_midnight = timezone.now().replace(
+            hour=16, minute=20, second=0, microsecond=0
+        )
+        with patch(
+            "django.utils.timezone.now", return_value=just_past_local_midnight
+        ):
+            seed()
+            report = get_sales_report(resolve_period("today"))
+
+        self.assertGreater(report["sale_count"], 0)
+
+    def test_no_sale_is_dated_in_the_future(self):
+        seed()
+
+        self.assertFalse(Sale.objects.filter(created_at__gt=timezone.now()).exists())

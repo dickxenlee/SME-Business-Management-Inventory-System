@@ -15,6 +15,7 @@ from django.views.generic import FormView, ListView
 from reports.forms import PeriodFilterForm
 from reports.services import get_dashboard_data, resolve_period
 
+from .demo import demo_credentials, is_demo_account
 from .forms import StaffCreationForm, StaffSetPasswordForm
 
 
@@ -68,6 +69,32 @@ def home(request):
             "dashboard": dashboard,
         },
     )
+
+
+class SignInView(auth_views.LoginView):
+    """The login page, with the demo login shown where a demo account exists."""
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["demo_login"] = demo_credentials()
+        return context
+
+
+class OwnPasswordChangeView(auth_views.PasswordChangeView):
+    """Password change for everyone except the shared demo account.
+
+    That password is published, so one visitor changing it would lock every
+    other visitor out until the demo was next reseeded.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if is_demo_account(request.user):
+            messages.info(
+                request,
+                "The demo account is shared, so its password cannot be changed.",
+            )
+            return redirect("core:home")
+        return super().dispatch(request, *args, **kwargs)
 
 
 class PasswordResetStartView(auth_views.PasswordResetView):

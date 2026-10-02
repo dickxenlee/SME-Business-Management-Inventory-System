@@ -34,6 +34,13 @@
 
                     <button class="btn btn-primary w-100" type="submit">Sign in</button>
                 </form>
+                {% if demo_login %}
+                    <div class="alert alert-info mt-4 mb-0" role="note">
+                        <strong>Try the demo:</strong>
+                        username <code>{{ demo_login.username }}</code>,
+                        password <code>{{ demo_login.password }}</code>
+                    </div>
+                {% endif %}
                 {% if password_reset_enabled %}
                     <p class="text-center small mt-3 mb-0">
                         <a href="{% url 'core:password_reset' %}">Forgot your password?</a>

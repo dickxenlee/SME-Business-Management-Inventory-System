@@ -17,7 +17,7 @@ urlpatterns = [
     path("", views.home, name="home"),
     path(
         "accounts/login/",
-        auth_views.LoginView.as_view(
+        views.SignInView.as_view(
             template_name="registration/login.html",
             authentication_form=BootstrapAuthenticationForm,
         ),
@@ -30,7 +30,7 @@ urlpatterns = [
     ),
     path(
         "accounts/password-change/",
-        auth_views.PasswordChangeView.as_view(
+        views.OwnPasswordChangeView.as_view(
             template_name="registration/password_change_form.html",
             form_class=BootstrapPasswordChangeForm,
             success_url=reverse_lazy("core:password_change_done"),
