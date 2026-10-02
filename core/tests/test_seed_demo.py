@@ -9,6 +9,7 @@ from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
+from core.demo import DEMO_PASSWORD
 from customers.models import Customer
 from invoices.models import CreditNote, Invoice
 from products.models import Product
@@ -91,7 +92,7 @@ class SeedDemoContentTests(TestCase):
 
     def test_the_demo_account_can_actually_sign_in(self):
         self.client.post(
-            "/accounts/login/", {"username": "demo", "password": "demo-shop-2026"}
+            "/accounts/login/", {"username": "demo", "password": DEMO_PASSWORD}
         )
 
         self.assertIn("_auth_user_id", self.client.session)
@@ -142,7 +143,7 @@ class SeedDemoContentTests(TestCase):
         output = seed(reset=True)
 
         self.assertIn("demo", output)
-        self.assertIn("demo-shop-2026", output)
+        self.assertIn(DEMO_PASSWORD, output)
 
 
 class SeedDemoResetTests(TestCase):

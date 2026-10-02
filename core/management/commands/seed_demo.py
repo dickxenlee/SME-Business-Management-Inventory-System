@@ -17,6 +17,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
+from core.demo import DEMO_PASSWORD, DEMO_USERNAME
 from customers.models import Customer
 from inventory.models import StockMovement
 from inventory.services import stock_in
@@ -27,8 +28,6 @@ from sales.models import PaymentMethod, Sale, SaleItem, SaleReversal
 from sales.services import create_sale, void_sale
 
 
-DEMO_USERNAME = "demo"
-DEMO_PASSWORD = "demo-shop-2026"
 
 PRODUCTS = [
     ("COF-ARA-1K", "Arabica Coffee Beans 1kg", "48.00", "30.00", 60, 10),

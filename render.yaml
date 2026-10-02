@@ -1,8 +1,13 @@
 # Render blueprint for the public demo.
 #
 # Render's free instances have no pre-deploy step and no shell, so migrations
-# and seeding run inside the build command. seed_demo uses --only-if-empty so
-# a redeploy never destroys what is already there.
+# and seeding run inside the build command.
+#
+# seed_demo --reset DELETES every Product, Customer, Sale, Invoice, credit note
+# and stock movement and rebuilds the demo data on every deploy. That is the
+# point here: the demo login is public, so each deploy puts back whatever
+# visitors changed. Never use this build command against real records; swap
+# --reset for --only-if-empty if the data must survive a deploy.
 #
 # The database is deliberately NOT declared here. Render's own free Postgres
 # expires 30 days after creation and is then deleted, which would take the
@@ -19,7 +24,7 @@ services:
       python -m pip install -r requirements.txt &&
       python manage.py collectstatic --noinput &&
       python manage.py migrate &&
-      python manage.py seed_demo --only-if-empty --allow-production
+      python manage.py seed_demo --reset --allow-production
     startCommand: >-
       gunicorn sme_manager.wsgi:application
       --bind 0.0.0.0:$PORT

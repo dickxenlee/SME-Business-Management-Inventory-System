@@ -6,15 +6,17 @@ A Django and PostgreSQL business system for managing products, stock, customers,
 
 ### Try it
 
-**[Open the live demo](https://sme-manager-web-staging.up.railway.app/)** and sign in with:
+**[Open the live demo](https://sme-manager.onrender.com/)** and sign in with:
 
 | Username | Password |
 |---|---|
-| `demo` | `demo-shop-2026` |
+| `demo` | `demo1234` |
+
+The same login is shown on the sign-in page.
 
 The demo runs on a free instance that sleeps when idle, so the first page can take up to a minute to wake. It is seeded with a month of trading: products at healthy, low and zero stock, named and walk-in Sales across cash, card, e-wallet and transfer, issued Invoices, one voided Sale and one credit note. Switch the reporting period between Today, 7 days and 30 days to see the figures move.
 
-The account can run the shop — record Sales, move stock, manage Products and Customers, issue Invoices — but voiding, crediting, account management and Django admin stay owner-only, so it cannot be broken for the next visitor. The data resets on demand.
+The demo account is a limited Staff login. It can record Sales, move stock, manage Customers and issue Invoices, but it cannot void or credit, manage staff accounts, change any password including its own, or reach Django admin. The demo data and the demo password are rebuilt on every deploy, so nothing a visitor does is permanent.
 
 This is a portfolio and staging implementation. It does not claim commercial production usage, real customers, or production-scale traffic.
 
@@ -96,7 +98,7 @@ Dashboard and Reports support Today, the last 7 days, and the last 30 days using
 
 ## Testing and CI
 
-The project has **437 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, gross-margin reporting, login lockout, CSV security, production settings, and health checks.
+The project has **459 automated PostgreSQL-backed tests** covering models, forms, permissions, views, services, constraints, transaction rollback, concurrent stock operations, historical snapshots, gross-margin reporting, login lockout, CSV security, production settings, and health checks.
 
 GitHub Actions runs the suite against a real PostgreSQL service and separately validates the production configuration. Local verification uses the same checks:
 

@@ -153,11 +153,22 @@ inside the build command:
 python -m pip install -r requirements.txt &&
 python manage.py collectstatic --noinput &&
 python manage.py migrate &&
-python manage.py seed_demo --only-if-empty --allow-production
+python manage.py seed_demo --reset --allow-production
 ```
 
-`--only-if-empty` makes that safe to leave in place: it seeds a fresh database
-and leaves an established one untouched, so a redeploy never destroys data.
+`--reset` wipes and rebuilds the demo data on every deploy. The demo login is
+published, so this is what stops a visitor leaving the demo broken: any deploy
+puts everything back, including the demo password. User accounts are not
+deleted, so the owner account survives.
+
+To reset on demand, use **Manual Deploy** in the Render dashboard. To reset
+every day without touching anything, copy the service's **Deploy Hook** URL
+from Render's Settings into a GitHub repository secret named
+`RENDER_DEPLOY_HOOK_URL`; `.github/workflows/reset-demo.yml` then redeploys
+daily. Without the secret that workflow does nothing.
+
+If the data must survive deploys, use `--only-if-empty` instead: it seeds a
+fresh database and leaves an established one untouched.
 
 ### The secret key
 
